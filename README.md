@@ -90,12 +90,19 @@ target_link_libraries(myapp PRIVATE nws)
 
 ## Architecture
 
-```
-nws_core   ── error, rate_limit, retry, units
-nws_http   ── libcurl HTTP client (Pimpl)
-nws_models ── GeoJSON models + from_json parsers
-nws_api    ── NWSClient (all endpoints)
-nws        ── INTERFACE aggregator
+```mermaid
+graph LR
+    nws_core["nws_core<br/><small>error, rate_limit, retry, units</small>"]
+    nws_http["nws_http<br/><small>libcurl HTTP client</small>"]
+    nws_models["nws_models<br/><small>13 GeoJSON models<br/>+ from_json parsers</small>"]
+    nws_api["nws_api<br/><small>NWSClient<br/>all endpoints</small>"]
+    nws["nws<br/><small>INTERFACE</small>"]
+
+    nws_core --> nws_http
+    nws_core --> nws_models
+    nws_http --> nws_api
+    nws_models --> nws_api
+    nws_api --> nws
 ```
 
 ## API Coverage
@@ -158,6 +165,13 @@ make run-weather_monitor   # Polling station every 60s
 | libcurl | HTTP requests | `find_package(CURL)` |
 | nlohmann/json | JSON parsing | `FetchContent` |
 | GoogleTest | Unit testing | `FetchContent` |
+
+## References
+
+- [NWS API Documentation](https://www.weather.gov/documentation/services-web-api)
+- [NWS API Community Docs](https://weather-gov.github.io/api/)
+- [NWS API OpenAPI Spec](https://api.weather.gov/openapi.json)
+- [NWS API General FAQ](https://weather-gov.github.io/api/general-faqs)
 
 ## License
 
