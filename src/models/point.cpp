@@ -22,14 +22,14 @@ void from_json(const nlohmann::json& j, PointProperties& p) {
 	p.radar_station = json_string(j, "radarStation");
 
 	if (j.contains("relativeLocation") && !j["relativeLocation"].is_null()) {
-		const auto& rl = j["relativeLocation"];
+		const nlohmann::json& rl = j["relativeLocation"];
 		if (rl.contains("geometry") && !rl["geometry"].is_null()) {
 			GeoPoint gp;
 			from_json(rl["geometry"], gp);
 			p.relative_location.geometry = gp;
 		}
 		if (rl.contains("properties") && !rl["properties"].is_null()) {
-			const auto& props = rl["properties"];
+			const nlohmann::json& props = rl["properties"];
 			p.relative_location.properties.city = json_string(props, "city");
 			p.relative_location.properties.state = json_string(props, "state");
 			if (props.contains("distance") && !props["distance"].is_null()) {

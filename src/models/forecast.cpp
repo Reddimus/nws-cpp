@@ -28,8 +28,10 @@ void from_json(const nlohmann::json& j, ForecastPeriod& p) {
 		if (j["windSpeed"].is_string()) {
 			p.wind_speed = j["windSpeed"].get<std::string>();
 		} else if (j["windSpeed"].is_object()) {
-			auto qv_val = j["windSpeed"].value("value", 0.0);
-			auto qv_unit = j["windSpeed"].value("unitCode", "");
+			const auto& ws = j["windSpeed"];
+			double qv_val =
+				ws.contains("value") && ws["value"].is_number() ? ws["value"].get<double>() : 0.0;
+			std::string qv_unit = json_string(ws, "unitCode");
 			p.wind_speed = std::to_string(static_cast<int>(qv_val)) + " " + qv_unit;
 		}
 	}

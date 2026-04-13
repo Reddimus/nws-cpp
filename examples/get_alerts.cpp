@@ -9,7 +9,7 @@ int main() {
 	nws::NWSClient client(std::move(config));
 
 	// Get active alerts for Kansas
-	auto alerts = client.get_active_alerts_by_area("KS");
+	nws::Result<nws::AlertCollectionResponse> alerts = client.get_active_alerts_by_area("KS");
 	if (!alerts) {
 		std::cerr << "Error: " << alerts.error().message << "\n";
 		return 1;
@@ -18,7 +18,7 @@ int main() {
 	std::cout << "Active alerts for Kansas: " << alerts->features.size() << "\n\n";
 
 	for (const auto& alert : alerts->features) {
-		const auto& p = alert.properties;
+		const nws::AlertProperties& p = alert.properties;
 		std::cout << "Event: " << p.event << "\n";
 		std::cout << "Severity: " << nws::to_string(p.severity) << "\n";
 		std::cout << "Urgency: " << nws::to_string(p.urgency) << "\n";

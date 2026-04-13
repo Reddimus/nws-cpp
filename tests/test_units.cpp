@@ -118,42 +118,42 @@ TEST(ConversionTest, KmToMiles) {
 // ===== Generic convert function =====
 
 TEST(ConvertTest, SameUnit) {
-	auto result = convert(42.0, Unit::DegC, Unit::DegC);
+	std::optional<double> result = convert(42.0, Unit::DegC, Unit::DegC);
 	ASSERT_TRUE(result.has_value());
 	EXPECT_NEAR(*result, 42.0, kEpsilon);
 }
 
 TEST(ConvertTest, TemperatureConversion) {
-	auto result = convert(0.0, Unit::DegC, Unit::DegF);
+	std::optional<double> result = convert(0.0, Unit::DegC, Unit::DegF);
 	ASSERT_TRUE(result.has_value());
 	EXPECT_NEAR(*result, 32.0, kEpsilon);
 }
 
 TEST(ConvertTest, KelvinConversion) {
-	auto result = convert(273.15, Unit::Kelvin, Unit::DegC);
+	std::optional<double> result = convert(273.15, Unit::Kelvin, Unit::DegC);
 	ASSERT_TRUE(result.has_value());
 	EXPECT_NEAR(*result, 0.0, kEpsilon);
 }
 
 TEST(ConvertTest, SpeedConversion) {
-	auto result = convert(100.0, Unit::Km_h, Unit::Mi_h);
+	std::optional<double> result = convert(100.0, Unit::Km_h, Unit::Mi_h);
 	ASSERT_TRUE(result.has_value());
 	EXPECT_NEAR(*result, 62.14, kEpsilon);
 }
 
 TEST(ConvertTest, PressureConversion) {
-	auto result = convert(101325.0, Unit::Pascal, Unit::Millibar);
+	std::optional<double> result = convert(101325.0, Unit::Pascal, Unit::Millibar);
 	ASSERT_TRUE(result.has_value());
 	EXPECT_NEAR(*result, 1013.25, kEpsilon);
 }
 
 TEST(ConvertTest, UnsupportedConversion) {
-	auto result = convert(42.0, Unit::DegC, Unit::Meter);
+	std::optional<double> result = convert(42.0, Unit::DegC, Unit::Meter);
 	EXPECT_FALSE(result.has_value());
 }
 
 TEST(ConvertTest, LengthConversion) {
-	auto result = convert(25.4, Unit::Millimeter, Unit::Inch);
+	std::optional<double> result = convert(25.4, Unit::Millimeter, Unit::Inch);
 	ASSERT_TRUE(result.has_value());
 	EXPECT_NEAR(*result, 1.0, kEpsilon);
 }
@@ -172,7 +172,7 @@ TEST(MeasurementTest, NoValue) {
 
 TEST(MeasurementTest, ConvertTo) {
 	Measurement m{0.0, Unit::DegC};
-	auto f = m.to(Unit::DegF);
+	Measurement f = m.to(Unit::DegF);
 	ASSERT_TRUE(f.has_value());
 	EXPECT_NEAR(*f.value, 32.0, kEpsilon);
 	EXPECT_EQ(f.unit, Unit::DegF);
@@ -180,7 +180,7 @@ TEST(MeasurementTest, ConvertTo) {
 
 TEST(MeasurementTest, ConvertNullValue) {
 	Measurement m{std::nullopt, Unit::DegC};
-	auto f = m.to(Unit::DegF);
+	Measurement f = m.to(Unit::DegF);
 	EXPECT_FALSE(f.has_value());
 	EXPECT_EQ(f.unit, Unit::DegF);
 }
@@ -191,7 +191,7 @@ TEST(QuantitativeValueTest, AsMeasurement) {
 	QuantitativeValue qv;
 	qv.value = 20.0;
 	qv.unit = Unit::DegC;
-	auto m = qv.as_measurement();
+	Measurement m = qv.as_measurement();
 	EXPECT_TRUE(m.has_value());
 	EXPECT_EQ(m.unit, Unit::DegC);
 	EXPECT_NEAR(*m.value, 20.0, kEpsilon);
@@ -203,7 +203,7 @@ TEST(QuantitativeValueTest, ConvertedTo) {
 	qv.min_value = -10.0;
 	qv.max_value = 10.0;
 	qv.unit = Unit::DegC;
-	auto converted = qv.converted_to(Unit::DegF);
+	QuantitativeValue converted = qv.converted_to(Unit::DegF);
 	ASSERT_TRUE(converted.value.has_value());
 	EXPECT_NEAR(*converted.value, 32.0, kEpsilon);
 	ASSERT_TRUE(converted.min_value.has_value());

@@ -11,7 +11,7 @@ int main() {
 	nws::NWSClient client(std::move(config));
 
 	// Look up a point (Topeka, KS)
-	auto point = client.get_point(39.7456, -97.0892);
+	nws::Result<nws::PointResponse> point = client.get_point(39.7456, -97.0892);
 	if (!point) {
 		std::cerr << "Error: " << point.error().message << "\n";
 		return 1;

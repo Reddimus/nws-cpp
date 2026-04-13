@@ -58,7 +58,7 @@ TEST(BuildPaginatedQueryTest, BothParams) {
 	PaginationParams params;
 	params.cursor = Cursor{"abc"};
 	params.limit = 100;
-	auto result = build_paginated_query(params);
+	std::string result = build_paginated_query(params);
 	EXPECT_NE(result.find("cursor=abc"), std::string::npos);
 	EXPECT_NE(result.find("limit=100"), std::string::npos);
 }
@@ -73,7 +73,7 @@ TEST(PaginatedIteratorTest, SinglePage) {
 		return resp;
 	});
 
-	auto page = iter.next();
+	Result<std::vector<int>> page = iter.next();
 	ASSERT_TRUE(page.has_value());
 	EXPECT_EQ(page->size(), 3);
 	EXPECT_TRUE(iter.is_exhausted());
@@ -94,7 +94,7 @@ TEST(PaginatedIteratorTest, MultiplePages) {
 		return resp;
 	});
 
-	auto all = iter.collect_all();
+	Result<std::vector<int>> all = iter.collect_all();
 	ASSERT_TRUE(all.has_value());
 	EXPECT_EQ(all->size(), 4);
 	EXPECT_EQ(call_count, 2);
@@ -105,7 +105,7 @@ TEST(PaginatedIteratorTest, ErrorPropagation) {
 		return std::unexpected(Error::network("fail"));
 	});
 
-	auto page = iter.next();
+	Result<std::vector<int>> page = iter.next();
 	ASSERT_FALSE(page.has_value());
 	EXPECT_EQ(page.error().code, ErrorCode::NetworkError);
 }
@@ -117,11 +117,11 @@ TEST(PaginatedIteratorTest, ExhaustedReturnsEmpty) {
 		return PaginatedResponse<int>{{1}, std::nullopt};
 	});
 
-	auto page1 = iter.next();
+	Result<std::vector<int>> page1 = iter.next();
 	ASSERT_TRUE(page1.has_value());
 	EXPECT_TRUE(iter.is_exhausted());
 
-	auto page2 = iter.next();
+	Result<std::vector<int>> page2 = iter.next();
 	ASSERT_TRUE(page2.has_value());
 	EXPECT_TRUE(page2->empty());
 	EXPECT_EQ(call_count, 1); // Should not call fetch again

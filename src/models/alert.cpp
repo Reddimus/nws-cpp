@@ -123,7 +123,7 @@ void from_json(const nlohmann::json& j, AlertProperties& p) {
 	p.area_desc = json_string(j, "areaDesc");
 
 	if (j.contains("geocode") && !j["geocode"].is_null()) {
-		const auto& gc = j["geocode"];
+		const nlohmann::json& gc = j["geocode"];
 		if (gc.contains("UGC") && gc["UGC"].is_array()) {
 			p.geocode.ugc = gc["UGC"].get<std::vector<std::string>>();
 		}

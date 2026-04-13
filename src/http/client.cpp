@@ -5,22 +5,23 @@
 namespace nws {
 
 static size_t write_callback(void* ptr, size_t size, size_t nmemb, void* userdata) {
-	auto* body = static_cast<std::string*>(userdata);
+	std::string* body = static_cast<std::string*>(userdata);
 	body->append(static_cast<char*>(ptr), size * nmemb);
 	return size * nmemb;
 }
 
 static size_t header_callback(char* buffer, size_t size, size_t nitems, void* userdata) {
-	auto* headers = static_cast<std::vector<std::pair<std::string, std::string>>*>(userdata);
+	std::vector<std::pair<std::string, std::string>>* headers =
+		static_cast<std::vector<std::pair<std::string, std::string>>*>(userdata);
 	std::string line(buffer, size * nitems);
 
-	auto colon = line.find(':');
+	std::size_t colon = line.find(':');
 	if (colon != std::string::npos) {
 		std::string key = line.substr(0, colon);
 		std::string value = line.substr(colon + 1);
 		// Trim whitespace
-		auto start = value.find_first_not_of(" \t\r\n");
-		auto end = value.find_last_not_of(" \t\r\n");
+		std::size_t start = value.find_first_not_of(" \t\r\n");
+		std::size_t end = value.find_last_not_of(" \t\r\n");
 		if (start != std::string::npos && end != std::string::npos) {
 			value = value.substr(start, end - start + 1);
 		}

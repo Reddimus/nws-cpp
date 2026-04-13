@@ -7,11 +7,12 @@ RateLimiter::RateLimiter(Config config)
 	  last_refill_(std::chrono::steady_clock::now()) {}
 
 void RateLimiter::refill() noexcept {
-	auto now = std::chrono::steady_clock::now();
-	auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_refill_);
+	std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+	std::chrono::milliseconds elapsed =
+		std::chrono::duration_cast<std::chrono::milliseconds>(now - last_refill_);
 
 	if (elapsed >= config_.refill_interval) {
-		auto new_tokens =
+		std::uint16_t new_tokens =
 			static_cast<std::uint16_t>(elapsed.count() / config_.refill_interval.count());
 		tokens_ = std::min(static_cast<std::uint16_t>(tokens_ + new_tokens), config_.max_tokens);
 		last_refill_ = now;
@@ -43,7 +44,7 @@ bool RateLimiter::acquire() {
 }
 
 bool RateLimiter::acquire_for(std::chrono::milliseconds max_wait) {
-	auto deadline = std::chrono::steady_clock::now() + max_wait;
+	std::chrono::steady_clock::time_point deadline = std::chrono::steady_clock::now() + max_wait;
 
 	while (std::chrono::steady_clock::now() < deadline) {
 		if (try_acquire()) {
