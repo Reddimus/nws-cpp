@@ -1,0 +1,14 @@
+{
+    "correlationId": "3fe48ae1",
+    "parameterErrors": [
+        {
+            "parameter": "query.limit",
+            "message": "Query parameter \"limit\" is not recognized"
+        }
+    ],
+    "title": "Bad Request",
+    "type": "https://api.weather.gov/problems/BadRequest",
+    "status": 400,
+    "detail": "Bad Request",
+    "instance": "https://api.weather.gov/requests/3fe48ae1"
+}
