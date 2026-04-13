@@ -82,7 +82,7 @@ TEST(GetProductsParamsTest, AllOptional) {
 // ===== Null-safety regression tests =====
 
 TEST(NullSafetyTest, QuantitativeValueWithAllNulls) {
-	auto j = nlohmann::json::parse(R"({
+	nlohmann::json j = nlohmann::json::parse(R"({
 		"unitCode": null,
 		"value": null,
 		"qualityControl": null
@@ -94,7 +94,7 @@ TEST(NullSafetyTest, QuantitativeValueWithAllNulls) {
 }
 
 TEST(NullSafetyTest, PointPropertiesWithNullFields) {
-	auto j = nlohmann::json::parse(R"({
+	nlohmann::json j = nlohmann::json::parse(R"({
 		"@id": null,
 		"gridId": null,
 		"gridX": null,
@@ -110,7 +110,7 @@ TEST(NullSafetyTest, PointPropertiesWithNullFields) {
 }
 
 TEST(NullSafetyTest, ForecastPeriodWithNullFields) {
-	auto j = nlohmann::json::parse(R"({
+	nlohmann::json j = nlohmann::json::parse(R"({
 		"number": null,
 		"name": null,
 		"startTime": null,
@@ -130,7 +130,7 @@ TEST(NullSafetyTest, ForecastPeriodWithNullFields) {
 }
 
 TEST(NullSafetyTest, ObservationWithNullMeasurements) {
-	auto j = nlohmann::json::parse(R"({
+	nlohmann::json j = nlohmann::json::parse(R"({
 		"@id": null,
 		"station": null,
 		"stationId": null,
@@ -146,7 +146,7 @@ TEST(NullSafetyTest, ObservationWithNullMeasurements) {
 }
 
 TEST(NullSafetyTest, AlertWithNullFields) {
-	auto j = nlohmann::json::parse(R"({
+	nlohmann::json j = nlohmann::json::parse(R"({
 		"id": null,
 		"areaDesc": null,
 		"severity": null,

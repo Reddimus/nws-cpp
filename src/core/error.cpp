@@ -24,7 +24,7 @@ Error Error::from_response(int status, const std::string& body, const std::strin
 
 	// Try to parse RFC 7807 Problem Details JSON
 	try {
-		auto j = nlohmann::json::parse(body);
+		nlohmann::json j = nlohmann::json::parse(body);
 		if (j.contains("title") && j["title"].is_string()) {
 			err.message = j["title"].get<std::string>();
 		}

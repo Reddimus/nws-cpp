@@ -35,7 +35,7 @@ void from_json(const nlohmann::json& j, RadarStationFeature& r) {
 
 		// Populate lat/lon from geometry if properties don't have them
 		if (j.contains("properties") && !j["properties"].is_null()) {
-			auto& props = j["properties"];
+			const nlohmann::json& props = j["properties"];
 			if (!props.contains("latitude") || props["latitude"].is_null()) {
 				r.properties.latitude = gp.latitude;
 				r.properties.longitude = gp.longitude;

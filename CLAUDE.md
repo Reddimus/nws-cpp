@@ -21,6 +21,7 @@ make clean          # Remove build/
 ## Conventions
 - Code style: `.clang-format` (LLVM base, tabs, 100 cols)
 - Namespace: `nws`
+- **No `auto`**: Use explicit types. `auto` is only acceptable for iterators, structured bindings (`auto& [key, val]`), and range-for loops (`const auto& x : container`).
 - All model `from_json` functions use the null-safe `json_string(j, "key")` helper, NOT `j.value("key", "")` which throws on null values in nlohmann/json v3.
 - Models declare `from_json` in headers, implement in `.cpp` files
 - Include order: project headers first, then system headers (enforced by clang-format)

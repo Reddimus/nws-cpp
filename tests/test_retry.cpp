@@ -63,36 +63,36 @@ TEST(ShouldRetryResponseTest, NoRetryServerErrorWhenDisabled) {
 
 TEST(ShouldRetryErrorTest, RetryOnNetworkError) {
 	RetryPolicy policy;
-	auto err = Error::network("timeout");
+	Error err = Error::network("timeout");
 	EXPECT_TRUE(should_retry(err, policy));
 }
 
 TEST(ShouldRetryErrorTest, NoRetryOnParseError) {
 	RetryPolicy policy;
-	auto err = Error::parse("bad json");
+	Error err = Error::parse("bad json");
 	EXPECT_FALSE(should_retry(err, policy));
 }
 
 TEST(ShouldRetryErrorTest, NoRetryWhenDisabled) {
 	RetryPolicy policy;
 	policy.retry_on_network_error = false;
-	auto err = Error::network("timeout");
+	Error err = Error::network("timeout");
 	EXPECT_FALSE(should_retry(err, policy));
 }
 
 TEST(CalculateRetryDelayTest, FirstAttempt) {
 	RetryPolicy policy;
 	policy.jitter_factor = 0; // No jitter for deterministic test
-	auto delay = calculate_retry_delay(1, policy);
+	std::chrono::milliseconds delay = calculate_retry_delay(1, policy);
 	EXPECT_EQ(delay, std::chrono::milliseconds(500));
 }
 
 TEST(CalculateRetryDelayTest, ExponentialBackoff) {
 	RetryPolicy policy;
 	policy.jitter_factor = 0;
-	auto delay1 = calculate_retry_delay(1, policy);
-	auto delay2 = calculate_retry_delay(2, policy);
-	auto delay3 = calculate_retry_delay(3, policy);
+	std::chrono::milliseconds delay1 = calculate_retry_delay(1, policy);
+	std::chrono::milliseconds delay2 = calculate_retry_delay(2, policy);
+	std::chrono::milliseconds delay3 = calculate_retry_delay(3, policy);
 
 	EXPECT_EQ(delay1, std::chrono::milliseconds(500));
 	EXPECT_EQ(delay2, std::chrono::milliseconds(1000));
@@ -103,7 +103,8 @@ TEST(CalculateRetryDelayTest, CapsAtMaxDelay) {
 	RetryPolicy policy;
 	policy.jitter_factor = 0;
 	policy.max_delay = std::chrono::milliseconds(1500);
-	auto delay = calculate_retry_delay(3, policy); // Would be 2000ms without cap
+	std::chrono::milliseconds delay =
+		calculate_retry_delay(3, policy); // Would be 2000ms without cap
 	EXPECT_EQ(delay, std::chrono::milliseconds(1500));
 }
 
@@ -112,7 +113,7 @@ TEST(CalculateRetryDelayTest, JitterRange) {
 	policy.jitter_factor = 0.1;
 	// Run multiple times and check delay is within expected range
 	for (int i = 0; i < 20; ++i) {
-		auto delay = calculate_retry_delay(1, policy);
+		std::chrono::milliseconds delay = calculate_retry_delay(1, policy);
 		EXPECT_GE(delay.count(), 450); // 500 * 0.9
 		EXPECT_LE(delay.count(), 550); // 500 * 1.1
 	}
@@ -121,7 +122,7 @@ TEST(CalculateRetryDelayTest, JitterRange) {
 TEST(WithRetryTest, SuccessOnFirstAttempt) {
 	int call_count = 0;
 	RetryPolicy policy;
-	auto result = with_retry(
+	Result<HttpResponse> result = with_retry(
 		[&]() -> Result<HttpResponse> {
 			++call_count;
 			return HttpResponse{200, "ok", {}};
@@ -140,7 +141,7 @@ TEST(WithRetryTest, RetriesOnServerError) {
 	policy.max_attempts = 3;
 	policy.jitter_factor = 0;
 
-	auto result = with_retry(
+	Result<HttpResponse> result = with_retry(
 		[&]() -> Result<HttpResponse> {
 			++call_count;
 			if (call_count < 3) {
@@ -162,7 +163,7 @@ TEST(WithRetryTest, GivesUpAfterMaxAttempts) {
 	policy.max_attempts = 2;
 	policy.jitter_factor = 0;
 
-	auto result = with_retry(
+	Result<HttpResponse> result = with_retry(
 		[&]() -> Result<HttpResponse> {
 			++call_count;
 			return HttpResponse{503, "busy", {}};
@@ -182,7 +183,7 @@ TEST(WithRetryTest, RetriesOnNetworkError) {
 	policy.max_attempts = 3;
 	policy.jitter_factor = 0;
 
-	auto result = with_retry(
+	Result<HttpResponse> result = with_retry(
 		[&]() -> Result<HttpResponse> {
 			++call_count;
 			if (call_count < 3) {
@@ -202,7 +203,7 @@ TEST(WithRetryTest, NoRetryOnNonRetryableError) {
 	RetryPolicy policy;
 	policy.initial_delay = std::chrono::milliseconds(1);
 
-	auto result = with_retry(
+	Result<HttpResponse> result = with_retry(
 		[&]() -> Result<HttpResponse> {
 			++call_count;
 			return std::unexpected(Error::parse("bad json"));

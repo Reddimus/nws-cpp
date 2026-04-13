@@ -9,14 +9,14 @@ namespace {
 TEST(LruCacheTest, PutAndGet) {
 	LruCache<std::string, int> cache;
 	cache.put("a", 1);
-	auto val = cache.get("a");
+	std::optional<int> val = cache.get("a");
 	ASSERT_TRUE(val.has_value());
 	EXPECT_EQ(*val, 1);
 }
 
 TEST(LruCacheTest, MissReturnsNullopt) {
 	LruCache<std::string, int> cache;
-	auto val = cache.get("nonexistent");
+	std::optional<int> val = cache.get("nonexistent");
 	EXPECT_FALSE(val.has_value());
 }
 
@@ -24,7 +24,7 @@ TEST(LruCacheTest, UpdateExisting) {
 	LruCache<std::string, int> cache;
 	cache.put("a", 1);
 	cache.put("a", 2);
-	auto val = cache.get("a");
+	std::optional<int> val = cache.get("a");
 	ASSERT_TRUE(val.has_value());
 	EXPECT_EQ(*val, 2);
 	EXPECT_EQ(cache.size(), 1);
@@ -56,7 +56,7 @@ TEST(LruCacheTest, TTLExpiry) {
 		{.max_entries = 100, .ttl = std::chrono::seconds(0)}); // Immediate expiry
 	cache.put("a", 1);
 	std::this_thread::sleep_for(std::chrono::milliseconds(10));
-	auto val = cache.get("a");
+	std::optional<int> val = cache.get("a");
 	EXPECT_FALSE(val.has_value());
 }
 
@@ -115,7 +115,7 @@ TEST(CoordinateKeyTest, CacheWithCoordinateKey) {
 	LruCache<CoordinateKey, std::string> cache;
 	CoordinateKey key{39.7456, -97.0892};
 	cache.put(key, "Topeka");
-	auto val = cache.get(key);
+	std::optional<std::string> val = cache.get(key);
 	ASSERT_TRUE(val.has_value());
 	EXPECT_EQ(*val, "Topeka");
 }

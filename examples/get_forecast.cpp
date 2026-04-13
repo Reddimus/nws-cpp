@@ -10,7 +10,8 @@ int main() {
 	nws::NWSClient client(std::move(config));
 
 	// Get forecast for Austin, TX
-	auto forecast = client.get_forecast_for_location(30.2672, -97.7431);
+	nws::Result<nws::ForecastResponse> forecast =
+		client.get_forecast_for_location(30.2672, -97.7431);
 	if (!forecast) {
 		std::cerr << "Error: " << forecast.error().message << "\n";
 		if (!forecast.error().detail.empty()) {

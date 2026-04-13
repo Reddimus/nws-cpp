@@ -214,7 +214,7 @@ Measurement Measurement::to(Unit target) const {
 	if (!value.has_value()) {
 		return {std::nullopt, target};
 	}
-	auto result = convert(*value, unit, target);
+	std::optional<double> result = convert(*value, unit, target);
 	if (result.has_value()) {
 		return {*result, target};
 	}
@@ -224,20 +224,20 @@ Measurement Measurement::to(Unit target) const {
 QuantitativeValue QuantitativeValue::converted_to(Unit target) const {
 	QuantitativeValue result = *this;
 	if (value.has_value()) {
-		auto converted = convert(*value, unit, target);
+		std::optional<double> converted = convert(*value, unit, target);
 		if (converted.has_value()) {
 			result.value = *converted;
 			result.unit = target;
 		}
 	}
 	if (max_value.has_value()) {
-		auto converted = convert(*max_value, unit, target);
+		std::optional<double> converted = convert(*max_value, unit, target);
 		if (converted.has_value()) {
 			result.max_value = *converted;
 		}
 	}
 	if (min_value.has_value()) {
-		auto converted = convert(*min_value, unit, target);
+		std::optional<double> converted = convert(*min_value, unit, target);
 		if (converted.has_value()) {
 			result.min_value = *converted;
 		}

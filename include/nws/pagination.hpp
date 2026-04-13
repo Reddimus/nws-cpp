@@ -51,12 +51,12 @@ public:
 			return std::vector<T>{};
 		}
 
-		auto result = fetch_fn_(params_);
+		Result<PaginatedResponse<T>> result = fetch_fn_(params_);
 		if (!result.has_value()) {
 			return std::unexpected(result.error());
 		}
 
-		auto& page = *result;
+		PaginatedResponse<T>& page = *result;
 		if (page.has_more()) {
 			params_.cursor = page.next_cursor;
 		} else {
@@ -73,7 +73,7 @@ public:
 	[[nodiscard]] Result<std::vector<T>> collect_all() {
 		std::vector<T> all;
 		while (!exhausted_) {
-			auto page = next();
+			Result<std::vector<T>> page = next();
 			if (!page.has_value()) {
 				return std::unexpected(page.error());
 			}

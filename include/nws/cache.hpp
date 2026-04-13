@@ -30,8 +30,8 @@ public:
 			return std::nullopt;
 		}
 
-		auto& entry = it->second;
-		auto now = std::chrono::steady_clock::now();
+		CacheEntry& entry = it->second;
+		std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
 		if (now - entry.inserted_at > config_.ttl) {
 			// Expired: remove from LRU list and map
 			order_.erase(entry.list_it);
@@ -58,7 +58,7 @@ public:
 
 		// Evict if at capacity
 		while (map_.size() >= config_.max_entries && !order_.empty()) {
-			auto& lru_key = order_.back();
+			Key& lru_key = order_.back();
 			map_.erase(lru_key);
 			order_.pop_back();
 		}
@@ -125,8 +125,8 @@ struct CoordinateKey {
 template <>
 struct std::hash<nws::CoordinateKey> {
 	std::size_t operator()(const nws::CoordinateKey& k) const noexcept {
-		auto h1 = std::hash<double>{}(k.latitude);
-		auto h2 = std::hash<double>{}(k.longitude);
+		std::size_t h1 = std::hash<double>{}(k.latitude);
+		std::size_t h2 = std::hash<double>{}(k.longitude);
 		return h1 ^ (h2 << 1);
 	}
 };

@@ -33,7 +33,7 @@ nlohmann::json load_fixture(const std::string& filename) {
 // ===== QuantitativeValue =====
 
 TEST(QuantitativeValueTest, FromJson) {
-	auto j = nlohmann::json::parse(R"({
+	nlohmann::json j = nlohmann::json::parse(R"({
 		"unitCode": "wmoUnit:degC",
 		"value": 23.0,
 		"qualityControl": "V"
@@ -49,7 +49,7 @@ TEST(QuantitativeValueTest, FromJson) {
 }
 
 TEST(QuantitativeValueTest, FromJsonNullValue) {
-	auto j = nlohmann::json::parse(R"({
+	nlohmann::json j = nlohmann::json::parse(R"({
 		"unitCode": "wmoUnit:km_h-1",
 		"value": null,
 		"qualityControl": "Z"
@@ -61,7 +61,7 @@ TEST(QuantitativeValueTest, FromJsonNullValue) {
 }
 
 TEST(QuantitativeValueTest, FromJsonMinMax) {
-	auto j = nlohmann::json::parse(R"({
+	nlohmann::json j = nlohmann::json::parse(R"({
 		"unitCode": "wmoUnit:degC",
 		"value": 20.0,
 		"minValue": 15.0,
@@ -80,7 +80,7 @@ TEST(QuantitativeValueTest, FromJsonMinMax) {
 // ===== Point =====
 
 TEST(PointTest, FromJsonFixture) {
-	auto j = load_fixture("point_response.json");
+	nlohmann::json j = load_fixture("point_response.json");
 	if (j.empty()) {
 		GTEST_SKIP() << "Fixture not found";
 	}
@@ -111,7 +111,7 @@ TEST(PointTest, DefaultConstruction) {
 // ===== Forecast =====
 
 TEST(ForecastTest, FromJsonFixture) {
-	auto j = load_fixture("forecast_response.json");
+	nlohmann::json j = load_fixture("forecast_response.json");
 	if (j.empty()) {
 		GTEST_SKIP() << "Fixture not found";
 	}
@@ -123,7 +123,7 @@ TEST(ForecastTest, FromJsonFixture) {
 	EXPECT_FALSE(forecast.properties.generated_at.empty());
 	ASSERT_FALSE(forecast.properties.periods.empty());
 
-	const auto& first = forecast.properties.periods[0];
+	const ForecastPeriod& first = forecast.properties.periods[0];
 	EXPECT_EQ(first.number, 1);
 	EXPECT_FALSE(first.name.empty());
 	EXPECT_FALSE(first.start_time.empty());
@@ -145,7 +145,7 @@ TEST(ForecastPeriodTest, DefaultConstruction) {
 // ===== Observation =====
 
 TEST(ObservationTest, FromJsonFixture) {
-	auto j = load_fixture("observation_response.json");
+	nlohmann::json j = load_fixture("observation_response.json");
 	if (j.empty()) {
 		GTEST_SKIP() << "Fixture not found";
 	}
@@ -179,7 +179,7 @@ TEST(ObservationTest, DefaultConstruction) {
 // ===== Station =====
 
 TEST(StationTest, FromJsonFixture) {
-	auto j = load_fixture("station_response.json");
+	nlohmann::json j = load_fixture("station_response.json");
 	if (j.empty()) {
 		GTEST_SKIP() << "Fixture not found";
 	}
@@ -233,7 +233,7 @@ TEST(AlertTest, ToStringSeverity) {
 }
 
 TEST(AlertTest, FromJsonInline) {
-	auto j = nlohmann::json::parse(R"({
+	nlohmann::json j = nlohmann::json::parse(R"({
 		"id": "test-alert-1",
 		"type": "Feature",
 		"properties": {
@@ -278,7 +278,7 @@ TEST(AlertTest, FromJsonInline) {
 // ===== GeoPoint =====
 
 TEST(GeoPointTest, FromJsonObject) {
-	auto j = nlohmann::json::parse(R"({
+	nlohmann::json j = nlohmann::json::parse(R"({
 		"type": "Point",
 		"coordinates": [-97.0892, 39.7456]
 	})");
@@ -289,7 +289,7 @@ TEST(GeoPointTest, FromJsonObject) {
 }
 
 TEST(GeoPointTest, FromJsonArray) {
-	auto j = nlohmann::json::parse("[-97.0892, 39.7456]");
+	nlohmann::json j = nlohmann::json::parse("[-97.0892, 39.7456]");
 	GeoPoint p;
 	from_json(j, p);
 	EXPECT_NEAR(p.longitude, -97.0892, 0.001);

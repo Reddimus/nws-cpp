@@ -32,7 +32,7 @@ void from_json(const nlohmann::json& j, QuantitativeValue& qv) {
 void from_json(const nlohmann::json& j, GeoPoint& p) {
 	// GeoJSON coordinates are [longitude, latitude]
 	if (j.is_object() && j.contains("coordinates")) {
-		const auto& coords = j["coordinates"];
+		const nlohmann::json& coords = j["coordinates"];
 		if (coords.is_array() && coords.size() >= 2) {
 			p.longitude = coords[0].get<double>();
 			p.latitude = coords[1].get<double>();
