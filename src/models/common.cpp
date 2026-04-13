@@ -11,7 +11,8 @@ void from_json(const nlohmann::json& j, QuantitativeValue& qv) {
 	if (j.is_null()) {
 		return;
 	}
-	qv.unit_code = j.value("unitCode", "");
+	qv.unit_code =
+		j.contains("unitCode") && j["unitCode"].is_string() ? j["unitCode"].get<std::string>() : "";
 	qv.unit = parse_unit_code(qv.unit_code);
 
 	if (j.contains("value") && !j["value"].is_null()) {

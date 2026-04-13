@@ -25,10 +25,15 @@ Error Error::from_response(int status, const std::string& body, const std::strin
 	// Try to parse RFC 7807 Problem Details JSON
 	try {
 		auto j = nlohmann::json::parse(body);
-		err.message = j.value("title", "");
-		err.detail = j.value("detail", "");
-		if (err.correlation_id.empty()) {
-			err.correlation_id = j.value("correlationId", "");
+		if (j.contains("title") && j["title"].is_string()) {
+			err.message = j["title"].get<std::string>();
+		}
+		if (j.contains("detail") && j["detail"].is_string()) {
+			err.detail = j["detail"].get<std::string>();
+		}
+		if (err.correlation_id.empty() && j.contains("correlationId") &&
+			j["correlationId"].is_string()) {
+			err.correlation_id = j["correlationId"].get<std::string>();
 		}
 	} catch (...) {
 		// Not valid JSON — use raw body as message

@@ -167,8 +167,8 @@ void from_json(const nlohmann::json& j, AlertProperties& p) {
 }
 
 void from_json(const nlohmann::json& j, AlertFeature& r) {
-	r.id = j.value("id", "");
-	r.type = j.value("type", "Feature");
+	r.id = json_string(j, "id");
+	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>() : "Feature";
 
 	if (j.contains("geometry") && !j["geometry"].is_null()) {
 		GeoPoint gp;
@@ -182,7 +182,8 @@ void from_json(const nlohmann::json& j, AlertFeature& r) {
 }
 
 void from_json(const nlohmann::json& j, AlertCollectionResponse& r) {
-	r.type = j.value("type", "FeatureCollection");
+	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>()
+														 : "FeatureCollection";
 	if (j.contains("features") && j["features"].is_array()) {
 		for (const auto& feat : j["features"]) {
 			AlertFeature alert;
@@ -193,9 +194,9 @@ void from_json(const nlohmann::json& j, AlertCollectionResponse& r) {
 }
 
 void from_json(const nlohmann::json& j, AlertActiveCount& c) {
-	c.total = j.value("total", 0);
-	c.land = j.value("land", 0);
-	c.marine = j.value("marine", 0);
+	c.total = json_int(j, "total");
+	c.land = json_int(j, "land");
+	c.marine = json_int(j, "marine");
 	if (j.contains("regions") && j["regions"].is_object()) {
 		for (auto& [key, val] : j["regions"].items()) {
 			c.regions[key] = val.get<std::int32_t>();

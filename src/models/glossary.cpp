@@ -1,12 +1,14 @@
 #include "nws/models/glossary.hpp"
 
+#include "nws/models/common.hpp"
+
 #include <nlohmann/json.hpp>
 
 namespace nws {
 
 void from_json(const nlohmann::json& j, GlossaryTerm& t) {
-	t.term = j.value("term", "");
-	t.definition = j.value("definition", "");
+	t.term = json_string(j, "term");
+	t.definition = json_string(j, "definition");
 }
 
 void from_json(const nlohmann::json& j, GlossaryResponse& r) {

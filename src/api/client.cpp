@@ -467,6 +467,98 @@ Result<std::vector<std::string>> NWSClient::get_alert_types() {
 	}
 }
 
+// ===== Gridpoints API =====
+
+Result<GridpointResponse> NWSClient::get_gridpoint(const std::string& wfo, std::int32_t x,
+												   std::int32_t y) {
+	std::string path = "/gridpoints/" + wfo + "/" + std::to_string(x) + "," + std::to_string(y);
+
+	auto result = do_get(path);
+	if (!result) {
+		return std::unexpected(result.error());
+	}
+	if (result->status_code != 200) {
+		return std::unexpected(
+			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	}
+
+	try {
+		auto j = nlohmann::json::parse(result->body);
+		GridpointResponse response;
+		from_json(j, response);
+		return response;
+	} catch (const nlohmann::json::exception& e) {
+		return std::unexpected(Error::parse(e.what()));
+	}
+}
+
+// ===== Zones API =====
+
+Result<ZoneFeature> NWSClient::get_zone(const std::string& type, const std::string& zone_id) {
+	auto result = do_get("/zones/" + type + "/" + zone_id);
+	if (!result) {
+		return std::unexpected(result.error());
+	}
+	if (result->status_code != 200) {
+		return std::unexpected(
+			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	}
+
+	try {
+		auto j = nlohmann::json::parse(result->body);
+		ZoneFeature response;
+		from_json(j, response);
+		return response;
+	} catch (const nlohmann::json::exception& e) {
+		return std::unexpected(Error::parse(e.what()));
+	}
+}
+
+Result<ZoneForecastProperties> NWSClient::get_zone_forecast(const std::string& type,
+															const std::string& zone_id) {
+	auto result = do_get("/zones/" + type + "/" + zone_id + "/forecast");
+	if (!result) {
+		return std::unexpected(result.error());
+	}
+	if (result->status_code != 200) {
+		return std::unexpected(
+			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	}
+
+	try {
+		auto j = nlohmann::json::parse(result->body);
+		ZoneForecastProperties response;
+		if (j.contains("properties") && !j["properties"].is_null()) {
+			from_json(j["properties"], response);
+		}
+		return response;
+	} catch (const nlohmann::json::exception& e) {
+		return std::unexpected(Error::parse(e.what()));
+	}
+}
+
+// ===== Glossary API =====
+
+Result<GlossaryResponse> NWSClient::get_glossary() {
+	auto result = do_get("/glossary");
+	if (!result) {
+		return std::unexpected(result.error());
+	}
+	if (result->status_code != 200) {
+		return std::unexpected(
+			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	}
+
+	try {
+		auto j = nlohmann::json::parse(result->body);
+		GlossaryResponse response;
+		from_json(j, response);
+		return response;
+	} catch (const nlohmann::json::exception& e) {
+		return std::unexpected(Error::parse(e.what()));
+	}
+}
+
 // ===== Convenience Methods =====
 
 Result<ForecastResponse> NWSClient::get_forecast_for_location(double latitude, double longitude,

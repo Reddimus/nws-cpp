@@ -7,10 +7,10 @@
 namespace nws {
 
 void from_json(const nlohmann::json& j, ZoneProperties& p) {
-	p.id = j.value("@id", "");
-	p.type = j.value("@type", "");
-	p.name = j.value("name", "");
-	p.state = j.value("state", "");
+	p.id = json_string(j, "@id");
+	p.type = json_string(j, "@type");
+	p.name = json_string(j, "name");
+	p.state = json_string(j, "state");
 
 	if (j.contains("forecastOffices") && j["forecastOffices"].is_array()) {
 		p.forecast_offices = j["forecastOffices"].get<std::vector<std::string>>();
@@ -21,8 +21,8 @@ void from_json(const nlohmann::json& j, ZoneProperties& p) {
 }
 
 void from_json(const nlohmann::json& j, ZoneFeature& r) {
-	r.id = j.value("id", "");
-	r.type = j.value("type", "Feature");
+	r.id = json_string(j, "id");
+	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>() : "Feature";
 
 	if (j.contains("geometry") && !j["geometry"].is_null()) {
 		GeoPoint gp;
@@ -36,7 +36,8 @@ void from_json(const nlohmann::json& j, ZoneFeature& r) {
 }
 
 void from_json(const nlohmann::json& j, ZoneCollectionResponse& r) {
-	r.type = j.value("type", "FeatureCollection");
+	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>()
+														 : "FeatureCollection";
 	if (j.contains("features") && j["features"].is_array()) {
 		for (const auto& feat : j["features"]) {
 			ZoneFeature zone;
@@ -47,9 +48,9 @@ void from_json(const nlohmann::json& j, ZoneCollectionResponse& r) {
 }
 
 void from_json(const nlohmann::json& j, ZoneForecastPeriod& p) {
-	p.number = j.value("number", 0);
-	p.name = j.value("name", "");
-	p.detailed_forecast = j.value("detailedForecast", "");
+	p.number = json_int(j, "number");
+	p.name = json_string(j, "name");
+	p.detailed_forecast = json_string(j, "detailedForecast");
 }
 
 void from_json(const nlohmann::json& j, ZoneForecastProperties& p) {

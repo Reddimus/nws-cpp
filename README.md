@@ -100,15 +100,17 @@ nws        ── INTERFACE aggregator
 
 ## API Coverage
 
-### Core Endpoints (Implemented)
+### Endpoints
 
-| Category | Endpoints | Status |
-|----------|-----------|--------|
-| Points | `get_point()` | Done |
-| Forecasts | `get_forecast()`, `get_forecast_hourly()` | Done |
-| Observations | `get_observations()`, `get_latest_observation()` | Done |
-| Stations | `get_station()`, `get_gridpoint_stations()` | Done |
-| Alerts | `get_alerts()`, `get_active_alerts()`, `get_active_alert_count()`, `get_active_alerts_by_area()`, `get_active_alerts_by_zone()`, `get_alert()`, `get_alert_types()` | Done |
+| Category | Endpoints |
+|----------|-----------|
+| Points | `get_point()` |
+| Gridpoints | `get_gridpoint()`, `get_forecast()`, `get_forecast_hourly()`, `get_gridpoint_stations()` |
+| Observations | `get_observations()`, `get_latest_observation()` |
+| Stations | `get_station()` |
+| Alerts | `get_alerts()`, `get_active_alerts()`, `get_active_alert_count()`, `get_active_alerts_by_area()`, `get_active_alerts_by_zone()`, `get_alert()`, `get_alert_types()` |
+| Zones | `get_zone()`, `get_zone_forecast()` |
+| Glossary | `get_glossary()` |
 
 ### Convenience Methods
 
@@ -116,6 +118,10 @@ nws        ── INTERFACE aggregator
 |--------|-------------|
 | `get_forecast_for_location(lat, lon)` | Auto-resolves point -> grid -> forecast |
 | `get_current_weather(lat, lon)` | Auto-resolves point -> station -> latest observation |
+
+### Model Types (all with typed from_json parsers)
+
+Point, Forecast, Observation, Station, Alert, Zone, Gridpoint, Office, Product, Aviation (SIGMET/CWA), Radar, Glossary
 
 ### Model Types
 

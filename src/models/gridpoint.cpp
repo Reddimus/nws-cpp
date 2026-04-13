@@ -20,14 +20,14 @@ void parse_layer(const nlohmann::json& j, const std::string& key,
 } // namespace
 
 void from_json(const nlohmann::json& j, GridpointTimeValue& tv) {
-	tv.valid_time = j.value("validTime", "");
+	tv.valid_time = json_string(j, "validTime");
 	if (j.contains("value") && !j["value"].is_null()) {
 		tv.value = j["value"].get<double>();
 	}
 }
 
 void from_json(const nlohmann::json& j, GridpointLayer& layer) {
-	layer.uom = j.value("uom", "");
+	layer.uom = json_string(j, "uom");
 	layer.unit = parse_unit_code(layer.uom);
 
 	if (j.contains("values") && j["values"].is_array()) {
@@ -41,11 +41,11 @@ void from_json(const nlohmann::json& j, GridpointLayer& layer) {
 }
 
 void from_json(const nlohmann::json& j, GridpointProperties& p) {
-	p.update_time = j.value("updateTime", "");
-	p.valid_times = j.value("validTimes", "");
-	p.grid_id = j.value("gridId", "");
-	p.grid_x = j.value("gridX", 0);
-	p.grid_y = j.value("gridY", 0);
+	p.update_time = json_string(j, "updateTime");
+	p.valid_times = json_string(j, "validTimes");
+	p.grid_id = json_string(j, "gridId");
+	p.grid_x = json_int(j, "gridX");
+	p.grid_y = json_int(j, "gridY");
 
 	if (j.contains("elevation") && !j["elevation"].is_null()) {
 		from_json(j["elevation"], p.elevation);
@@ -73,8 +73,8 @@ void from_json(const nlohmann::json& j, GridpointProperties& p) {
 }
 
 void from_json(const nlohmann::json& j, GridpointResponse& r) {
-	r.id = j.value("id", "");
-	r.type = j.value("type", "Feature");
+	r.id = json_string(j, "id");
+	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>() : "Feature";
 
 	if (j.contains("geometry") && !j["geometry"].is_null()) {
 		GeoPoint gp;

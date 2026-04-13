@@ -17,8 +17,15 @@
 
 // Models
 #include "nws/models/alert.hpp"
+#include "nws/models/aviation.hpp"
 #include "nws/models/common.hpp"
 #include "nws/models/forecast.hpp"
+#include "nws/models/glossary.hpp"
+#include "nws/models/gridpoint.hpp"
 #include "nws/models/observation.hpp"
+#include "nws/models/office.hpp"
 #include "nws/models/point.hpp"
+#include "nws/models/product.hpp"
+#include "nws/models/radar.hpp"
 #include "nws/models/station.hpp"
+#include "nws/models/zone.hpp"

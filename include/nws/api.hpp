@@ -8,9 +8,12 @@
 #include "nws/http_client.hpp"
 #include "nws/models/alert.hpp"
 #include "nws/models/forecast.hpp"
+#include "nws/models/glossary.hpp"
+#include "nws/models/gridpoint.hpp"
 #include "nws/models/observation.hpp"
 #include "nws/models/point.hpp"
 #include "nws/models/station.hpp"
+#include "nws/models/zone.hpp"
 #include "nws/pagination.hpp"
 #include "nws/rate_limit.hpp"
 #include "nws/retry.hpp"
@@ -110,6 +113,10 @@ public:
 
 	// ===== Gridpoints/Forecasts API =====
 
+	/// Get raw gridpoint data (60+ meteorological layers as time series)
+	[[nodiscard]] Result<GridpointResponse> get_gridpoint(const std::string& wfo, std::int32_t x,
+														  std::int32_t y);
+
 	/// Get 12-hour period forecast
 	[[nodiscard]] Result<ForecastResponse>
 	get_forecast(const std::string& wfo, std::int32_t x, std::int32_t y,
@@ -163,6 +170,20 @@ public:
 
 	/// Get list of alert event types
 	[[nodiscard]] Result<std::vector<std::string>> get_alert_types();
+
+	// ===== Zones API =====
+
+	/// Get a zone by type and ID
+	[[nodiscard]] Result<ZoneFeature> get_zone(const std::string& type, const std::string& zone_id);
+
+	/// Get forecast for a zone
+	[[nodiscard]] Result<ZoneForecastProperties> get_zone_forecast(const std::string& type,
+																   const std::string& zone_id);
+
+	// ===== Glossary API =====
+
+	/// Get glossary of weather terms
+	[[nodiscard]] Result<GlossaryResponse> get_glossary();
 
 	// ===== Convenience Methods =====
 
