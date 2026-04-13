@@ -4,6 +4,9 @@ add_executable(nws_tests
     test_rate_limit.cpp
     test_retry.cpp
     test_models.cpp
+    test_pagination.cpp
+    test_cache.cpp
+    test_api.cpp
 )
 target_link_libraries(nws_tests PRIVATE
     nws_core nws_http nws_models nws_api

@@ -7,9 +7,9 @@
 namespace nws {
 
 void from_json(const nlohmann::json& j, RadarStationProperties& p) {
-	p.id = j.value("id", "");
-	p.name = j.value("name", "");
-	p.station_type = j.value("stationType", "");
+	p.id = json_string(j, "id");
+	p.name = json_string(j, "name");
+	p.station_type = json_string(j, "stationType");
 
 	// Coordinates may come from GeoJSON geometry or inline fields
 	if (j.contains("latitude") && !j["latitude"].is_null()) {
@@ -25,8 +25,8 @@ void from_json(const nlohmann::json& j, RadarStationProperties& p) {
 }
 
 void from_json(const nlohmann::json& j, RadarStationFeature& r) {
-	r.id = j.value("id", "");
-	r.type = j.value("type", "Feature");
+	r.id = json_string(j, "id");
+	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>() : "Feature";
 
 	if (j.contains("geometry") && !j["geometry"].is_null()) {
 		GeoPoint gp;
@@ -49,7 +49,8 @@ void from_json(const nlohmann::json& j, RadarStationFeature& r) {
 }
 
 void from_json(const nlohmann::json& j, RadarStationCollectionResponse& r) {
-	r.type = j.value("type", "FeatureCollection");
+	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>()
+														 : "FeatureCollection";
 	if (j.contains("features") && j["features"].is_array()) {
 		for (const auto& feat : j["features"]) {
 			RadarStationFeature station;
@@ -60,8 +61,8 @@ void from_json(const nlohmann::json& j, RadarStationCollectionResponse& r) {
 }
 
 void from_json(const nlohmann::json& j, RadarServerProperties& p) {
-	p.id = j.value("id", "");
-	p.host = j.value("host", "");
+	p.id = json_string(j, "id");
+	p.host = json_string(j, "host");
 }
 
 } // namespace nws

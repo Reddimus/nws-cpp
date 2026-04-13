@@ -7,17 +7,17 @@
 namespace nws {
 
 void from_json(const nlohmann::json& j, SigmetProperties& p) {
-	p.id = j.value("id", "");
-	p.atsu = j.value("atsu", "");
-	p.sequence = j.value("sequence", "");
-	p.phenomenon = j.value("phenomenon", "");
-	p.valid_time_from = j.value("validTimeFrom", "");
-	p.valid_time_to = j.value("validTimeTo", "");
+	p.id = json_string(j, "id");
+	p.atsu = json_string(j, "atsu");
+	p.sequence = json_string(j, "sequence");
+	p.phenomenon = json_string(j, "phenomenon");
+	p.valid_time_from = json_string(j, "validTimeFrom");
+	p.valid_time_to = json_string(j, "validTimeTo");
 }
 
 void from_json(const nlohmann::json& j, SigmetFeature& r) {
-	r.id = j.value("id", "");
-	r.type = j.value("type", "Feature");
+	r.id = json_string(j, "id");
+	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>() : "Feature";
 
 	if (j.contains("geometry") && !j["geometry"].is_null()) {
 		GeoPoint gp;
@@ -31,7 +31,8 @@ void from_json(const nlohmann::json& j, SigmetFeature& r) {
 }
 
 void from_json(const nlohmann::json& j, SigmetCollectionResponse& r) {
-	r.type = j.value("type", "FeatureCollection");
+	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>()
+														 : "FeatureCollection";
 	if (j.contains("features") && j["features"].is_array()) {
 		for (const auto& feat : j["features"]) {
 			SigmetFeature sigmet;
@@ -42,17 +43,17 @@ void from_json(const nlohmann::json& j, SigmetCollectionResponse& r) {
 }
 
 void from_json(const nlohmann::json& j, CWAProperties& p) {
-	p.id = j.value("id", "");
-	p.cwsu = j.value("cwsu", "");
-	p.sequence = j.value("sequence", "");
-	p.text = j.value("text", "");
-	p.valid_time_from = j.value("validTimeFrom", "");
-	p.valid_time_to = j.value("validTimeTo", "");
+	p.id = json_string(j, "id");
+	p.cwsu = json_string(j, "cwsu");
+	p.sequence = json_string(j, "sequence");
+	p.text = json_string(j, "text");
+	p.valid_time_from = json_string(j, "validTimeFrom");
+	p.valid_time_to = json_string(j, "validTimeTo");
 }
 
 void from_json(const nlohmann::json& j, CWAFeature& r) {
-	r.id = j.value("id", "");
-	r.type = j.value("type", "Feature");
+	r.id = json_string(j, "id");
+	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>() : "Feature";
 
 	if (j.contains("geometry") && !j["geometry"].is_null()) {
 		GeoPoint gp;
@@ -66,7 +67,8 @@ void from_json(const nlohmann::json& j, CWAFeature& r) {
 }
 
 void from_json(const nlohmann::json& j, CWACollectionResponse& r) {
-	r.type = j.value("type", "FeatureCollection");
+	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>()
+														 : "FeatureCollection";
 	if (j.contains("features") && j["features"].is_array()) {
 		for (const auto& feat : j["features"]) {
 			CWAFeature cwa;
