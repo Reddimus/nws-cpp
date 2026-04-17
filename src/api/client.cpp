@@ -1,8 +1,8 @@
 #include "nws/api.hpp"
 #include "nws/models/common.hpp"
 
+#include <format>
 #include <nlohmann/json.hpp>
-#include <sstream>
 
 namespace nws {
 
@@ -80,9 +80,7 @@ Result<PointResponse> NWSClient::get_point(double latitude, double longitude) {
 		}
 	}
 
-	std::ostringstream path;
-	path << "/points/" << latitude << "," << longitude;
-	Result<HttpResponse> result = do_get(path.str());
+	Result<HttpResponse> result = do_get(std::format("/points/{},{}", latitude, longitude));
 	if (!result) {
 		return std::unexpected(result.error());
 	}
