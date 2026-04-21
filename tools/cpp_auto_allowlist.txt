@@ -1,0 +1,18 @@
+# Repo-owned exceptions for the explicit local-type policy.
+# Format: relative/path.cpp|line snippet
+examples/get_alerts.cpp|for (const auto& alert : alerts->features) {
+examples/get_forecast.cpp|for (const auto& period : forecast->properties.periods) {
+src/api/client.cpp|for (const auto& v : values) {
+src/models/alert.cpp|for (const auto& feat : j["features"]) {
+src/models/aviation.cpp|for (const auto& feat : j["features"]) {
+src/models/aviation.cpp|for (const auto& feat : j["features"]) {
+src/models/forecast.cpp|for (const auto& period_json : j["periods"]) {
+src/models/glossary.cpp|for (const auto& term_json : j["glossary"]) {
+src/models/gridpoint.cpp|for (const auto& v : j["values"]) {
+src/models/observation.cpp|for (const auto& cl_json : j["cloudLayers"]) {
+src/models/observation.cpp|for (const auto& feat : j["features"]) {
+src/models/radar.cpp|for (const auto& feat : j["features"]) {
+src/models/station.cpp|for (const auto& feat : j["features"]) {
+src/models/zone.cpp|for (const auto& feat : j["features"]) {
+src/models/zone.cpp|for (const auto& period_json : j["periods"]) {
+tests/test_models.cpp|for (const auto& path : paths) {
