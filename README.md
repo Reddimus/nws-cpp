@@ -1,5 +1,10 @@
 # nws-cpp
 
+[![CI](https://github.com/Reddimus/nws-cpp/actions/workflows/ci.yml/badge.svg)](https://github.com/Reddimus/nws-cpp/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Reddimus/nws-cpp)](https://github.com/Reddimus/nws-cpp/releases)
+[![C++23](https://img.shields.io/badge/C%2B%2B-23-blue.svg)](https://en.cppreference.com/w/cpp/23)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 C++23 SDK for the [National Weather Service API](https://api.weather.gov/) (api.weather.gov).
 
 Provides typed, `std::expected`-based access to NWS weather data including forecasts, observations, alerts, and more. No API key required.
