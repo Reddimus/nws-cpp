@@ -178,6 +178,22 @@ make run-weather_monitor   # Polling station every 60s
 - [NWS API OpenAPI Spec](https://api.weather.gov/openapi.json)
 - [NWS API General FAQ](https://weather-gov.github.io/api/general-faqs)
 
+## Contributing
+
+Issues and pull requests are welcome. For non-trivial changes please
+open an issue first to discuss the approach. Local dev loop:
+
+```bash
+make build           # cmake -B build && cmake --build build
+make test            # ctest --output-on-failure
+make lint            # clang-format --dry-run -Werror
+make format          # clang-format -i (call before pushing)
+```
+
+CI runs the same lint+build+test on push and PR (Ubuntu 24.04 +
+macos-latest); see `.github/workflows/ci.yml`.
+
+
 ## License
 
 MIT
