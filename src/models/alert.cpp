@@ -1,72 +1,101 @@
+// Copyright (c) 2026 PredictionMarketsAI
+// SPDX-License-Identifier: MIT
+
 #include "nws/models/alert.hpp"
 
-#include "nws/models/common.hpp"
+#include <glaze/glaze.hpp>
+#include <glaze/json/generic.hpp>
+#include <string>
+#include <string_view>
+#include <utility>
 
-#include <nlohmann/json.hpp>
+#include "glaze_detail.hpp"
 
 namespace nws {
 
 AlertSeverity parse_alert_severity(std::string_view s) {
-	if (s == "Extreme")
+	if (s == "Extreme") {
 		return AlertSeverity::Extreme;
-	if (s == "Severe")
+	}
+	if (s == "Severe") {
 		return AlertSeverity::Severe;
-	if (s == "Moderate")
+	}
+	if (s == "Moderate") {
 		return AlertSeverity::Moderate;
-	if (s == "Minor")
+	}
+	if (s == "Minor") {
 		return AlertSeverity::Minor;
+	}
 	return AlertSeverity::Unknown;
 }
 
 AlertCertainty parse_alert_certainty(std::string_view s) {
-	if (s == "Observed")
+	if (s == "Observed") {
 		return AlertCertainty::Observed;
-	if (s == "Likely")
+	}
+	if (s == "Likely") {
 		return AlertCertainty::Likely;
-	if (s == "Possible")
+	}
+	if (s == "Possible") {
 		return AlertCertainty::Possible;
-	if (s == "Unlikely")
+	}
+	if (s == "Unlikely") {
 		return AlertCertainty::Unlikely;
+	}
 	return AlertCertainty::Unknown;
 }
 
 AlertUrgency parse_alert_urgency(std::string_view s) {
-	if (s == "Immediate")
+	if (s == "Immediate") {
 		return AlertUrgency::Immediate;
-	if (s == "Expected")
+	}
+	if (s == "Expected") {
 		return AlertUrgency::Expected;
-	if (s == "Future")
+	}
+	if (s == "Future") {
 		return AlertUrgency::Future;
-	if (s == "Past")
+	}
+	if (s == "Past") {
 		return AlertUrgency::Past;
+	}
 	return AlertUrgency::Unknown;
 }
 
 AlertStatus parse_alert_status(std::string_view s) {
-	if (s == "Actual")
+	if (s == "Actual") {
 		return AlertStatus::Actual;
-	if (s == "Exercise")
+	}
+	if (s == "Exercise") {
 		return AlertStatus::Exercise;
-	if (s == "System")
+	}
+	if (s == "System") {
 		return AlertStatus::System;
-	if (s == "Test")
+	}
+	if (s == "Test") {
 		return AlertStatus::Test;
-	if (s == "Draft")
+	}
+	if (s == "Draft") {
 		return AlertStatus::Draft;
+	}
 	return AlertStatus::Actual;
 }
 
 AlertMessageType parse_alert_message_type(std::string_view s) {
-	if (s == "Alert")
+	if (s == "Alert") {
 		return AlertMessageType::Alert;
-	if (s == "Update")
+	}
+	if (s == "Update") {
 		return AlertMessageType::Update;
-	if (s == "Cancel")
+	}
+	if (s == "Cancel") {
 		return AlertMessageType::Cancel;
-	if (s == "Ack")
+	}
+	if (s == "Ack") {
 		return AlertMessageType::Ack;
-	if (s == "Error")
+	}
+	if (s == "Error") {
 		return AlertMessageType::Error;
+	}
 	return AlertMessageType::Alert;
 }
 
@@ -118,100 +147,119 @@ std::string_view to_string(AlertUrgency v) {
 	return "Unknown";
 }
 
-void from_json(const nlohmann::json& j, AlertProperties& p) {
-	p.id = json_string(j, "id");
-	p.area_desc = json_string(j, "areaDesc");
+namespace {
 
-	if (j.contains("geocode") && !j["geocode"].is_null()) {
-		const nlohmann::json& gc = j["geocode"];
-		if (gc.contains("UGC") && gc["UGC"].is_array()) {
-			p.geocode.ugc = gc["UGC"].get<std::vector<std::string>>();
-		}
-		if (gc.contains("SAME") && gc["SAME"].is_array()) {
-			p.geocode.same = gc["SAME"].get<std::vector<std::string>>();
-		}
+void populate_alert_properties(const glz::generic& props, AlertProperties& p) {
+	p.id = detail::get_string(props, "id");
+	p.area_desc = detail::get_string(props, "areaDesc");
+
+	const glz::generic* geocode = detail::find_object(props, "geocode");
+	if (geocode != nullptr) {
+		p.geocode.ugc = detail::get_string_array(*geocode, "UGC");
+		p.geocode.same = detail::get_string_array(*geocode, "SAME");
 	}
 
-	if (j.contains("affectedZones") && j["affectedZones"].is_array()) {
-		p.affected_zones = j["affectedZones"].get<std::vector<std::string>>();
-	}
+	p.affected_zones = detail::get_string_array(props, "affectedZones");
 
-	p.sent = json_string(j, "sent");
-	p.effective = json_string(j, "effective");
-	if (j.contains("onset") && j["onset"].is_string()) {
-		p.onset = j["onset"].get<std::string>();
-	}
-	p.expires = json_string(j, "expires");
-	if (j.contains("ends") && j["ends"].is_string()) {
-		p.ends = j["ends"].get<std::string>();
-	}
+	p.sent = detail::get_string(props, "sent");
+	p.effective = detail::get_string(props, "effective");
+	p.onset = detail::get_optional_string(props, "onset");
+	p.expires = detail::get_string(props, "expires");
+	p.ends = detail::get_optional_string(props, "ends");
 
-	p.status = parse_alert_status(json_string(j, "status"));
-	p.message_type = parse_alert_message_type(json_string(j, "messageType"));
-	p.category = json_string(j, "category");
-	p.severity = parse_alert_severity(json_string(j, "severity"));
-	p.certainty = parse_alert_certainty(json_string(j, "certainty"));
-	p.urgency = parse_alert_urgency(json_string(j, "urgency"));
-	p.event = json_string(j, "event");
-	p.sender = json_string(j, "sender");
-	p.sender_name = json_string(j, "senderName");
+	p.status = parse_alert_status(detail::get_string(props, "status"));
+	p.message_type = parse_alert_message_type(detail::get_string(props, "messageType"));
+	p.category = detail::get_string(props, "category");
+	p.severity = parse_alert_severity(detail::get_string(props, "severity"));
+	p.certainty = parse_alert_certainty(detail::get_string(props, "certainty"));
+	p.urgency = parse_alert_urgency(detail::get_string(props, "urgency"));
+	p.event = detail::get_string(props, "event");
+	p.sender = detail::get_string(props, "sender");
+	p.sender_name = detail::get_string(props, "senderName");
 
-	if (j.contains("headline") && j["headline"].is_string()) {
-		p.headline = j["headline"].get<std::string>();
-	}
-	p.description = json_string(j, "description");
-	if (j.contains("instruction") && j["instruction"].is_string()) {
-		p.instruction = j["instruction"].get<std::string>();
-	}
-	p.response = json_string(j, "response");
+	p.headline = detail::get_optional_string(props, "headline");
+	p.description = detail::get_string(props, "description");
+	p.instruction = detail::get_optional_string(props, "instruction");
+	p.response = detail::get_string(props, "response");
 }
 
-void from_json(const nlohmann::json& j, AlertFeature& r) {
-	r.id = json_string(j, "id");
-	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>() : "Feature";
+void populate_alert_feature(const glz::generic& root, AlertFeature& r) {
+	r.id = detail::get_string(root, "id");
+	std::string type = detail::get_string(root, "type");
+	r.type = type.empty() ? "Feature" : std::move(type);
 
-	if (j.contains("geometry") && !j["geometry"].is_null()) {
-		GeoPoint gp;
-		from_json(j["geometry"], gp);
-		r.geometry = gp;
+	const glz::generic* geom = detail::find_object(root, "geometry");
+	if (geom != nullptr) {
+		r.geometry = detail::parse_geometry(*geom);
 	}
 
-	if (j.contains("properties") && !j["properties"].is_null()) {
-		from_json(j["properties"], r.properties);
+	const glz::generic* props = detail::find_object(root, "properties");
+	if (props != nullptr) {
+		populate_alert_properties(*props, r.properties);
 	}
 }
 
-void from_json(const nlohmann::json& j, AlertCollectionResponse& r) {
-	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>()
-														 : "FeatureCollection";
-	if (j.contains("features") && j["features"].is_array()) {
-		for (const auto& feat : j["features"]) {
-			AlertFeature alert;
-			from_json(feat, alert);
-			r.features.push_back(std::move(alert));
+void populate_string_int_map(const glz::generic& parent, const char* key,
+							 std::map<std::string, std::int32_t>& out) {
+	const glz::generic* obj = detail::find_object(parent, key);
+	if (obj == nullptr) {
+		return;
+	}
+	for (const auto& [k, v] : obj->get_object()) {
+		if (v.is_number()) {
+			out[k] = static_cast<std::int32_t>(v.get<double>());
 		}
 	}
 }
 
-void from_json(const nlohmann::json& j, AlertActiveCount& c) {
-	c.total = json_int(j, "total");
-	c.land = json_int(j, "land");
-	c.marine = json_int(j, "marine");
-	if (j.contains("regions") && j["regions"].is_object()) {
-		for (auto& [key, val] : j["regions"].items()) {
-			c.regions[key] = val.get<std::int32_t>();
-		}
+} // namespace
+
+Result<void> deserialize_alert_feature(std::string_view body, AlertFeature& out) {
+	Result<glz::generic> root = detail::parse_root(body);
+	if (!root) {
+		return std::unexpected(root.error());
 	}
-	if (j.contains("areas") && j["areas"].is_object()) {
-		for (auto& [key, val] : j["areas"].items()) {
-			c.areas[key] = val.get<std::int32_t>();
-		}
+	populate_alert_feature(*root, out);
+	return {};
+}
+
+Result<void> deserialize_alert_collection(std::string_view body, AlertCollectionResponse& out) {
+	Result<glz::generic> root = detail::parse_root(body);
+	if (!root) {
+		return std::unexpected(root.error());
 	}
-	if (j.contains("zones") && j["zones"].is_object()) {
-		for (auto& [key, val] : j["zones"].items()) {
-			c.zones[key] = val.get<std::int32_t>();
-		}
+
+	std::string type = detail::get_string(*root, "type");
+	out.type = type.empty() ? "FeatureCollection" : std::move(type);
+
+	const glz::generic* features = detail::find_array(*root, "features");
+	if (features == nullptr) {
+		return {};
 	}
+	const glz::generic::array_t& arr = features->get_array();
+	out.features.reserve(arr.size());
+	for (const glz::generic& feat : arr) {
+		AlertFeature alert;
+		populate_alert_feature(feat, alert);
+		out.features.push_back(std::move(alert));
+	}
+
+	return {};
+}
+
+Result<void> deserialize_alert_active_count(std::string_view body, AlertActiveCount& out) {
+	Result<glz::generic> root = detail::parse_root(body);
+	if (!root) {
+		return std::unexpected(root.error());
+	}
+
+	out.total = detail::get_int(*root, "total");
+	out.land = detail::get_int(*root, "land");
+	out.marine = detail::get_int(*root, "marine");
+	populate_string_int_map(*root, "regions", out.regions);
+	populate_string_int_map(*root, "areas", out.areas);
+	populate_string_int_map(*root, "zones", out.zones);
+	return {};
 }
 
 } // namespace nws

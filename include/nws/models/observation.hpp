@@ -1,11 +1,12 @@
 #pragma once
 
+#include "nws/error.hpp"
 #include "nws/geo.hpp"
 #include "nws/units.hpp"
 
-#include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace nws {
@@ -57,9 +58,9 @@ struct ObservationProperties {
 using ObservationResponse = GeoJsonFeature<ObservationProperties>;
 using ObservationCollectionResponse = GeoJsonFeatureCollection<ObservationProperties>;
 
-void from_json(const nlohmann::json& j, CloudLayer& cl);
-void from_json(const nlohmann::json& j, ObservationProperties& p);
-void from_json(const nlohmann::json& j, ObservationResponse& r);
-void from_json(const nlohmann::json& j, ObservationCollectionResponse& r);
+[[nodiscard]] Result<void> deserialize_observation_response(std::string_view body,
+															ObservationResponse& out);
+[[nodiscard]] Result<void> deserialize_observation_collection(std::string_view body,
+															  ObservationCollectionResponse& out);
 
 } // namespace nws

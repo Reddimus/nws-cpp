@@ -1,24 +1,40 @@
+// Copyright (c) 2026 PredictionMarketsAI
+// SPDX-License-Identifier: MIT
+
 #include "nws/models/product.hpp"
 
-#include "nws/models/common.hpp"
+#include <glaze/glaze.hpp>
+#include <glaze/json/generic.hpp>
+#include <string_view>
 
-#include <nlohmann/json.hpp>
+#include "glaze_detail.hpp"
 
 namespace nws {
 
-void from_json(const nlohmann::json& j, ProductProperties& p) {
-	p.id = json_string(j, "id");
-	p.wmo_collective_id = json_string(j, "wmoCollectiveId");
-	p.issuing_office = json_string(j, "issuingOffice");
-	p.issuance_time = json_string(j, "issuanceTime");
-	p.product_code = json_string(j, "productCode");
-	p.product_name = json_string(j, "productName");
-	p.product_text = json_string(j, "productText");
+Result<void> deserialize_product_properties(std::string_view body, ProductProperties& out) {
+	Result<glz::generic> root = detail::parse_root(body);
+	if (!root) {
+		return std::unexpected(root.error());
+	}
+	out.id = detail::get_string(*root, "id");
+	out.wmo_collective_id = detail::get_string(*root, "wmoCollectiveId");
+	out.issuing_office = detail::get_string(*root, "issuingOffice");
+	out.issuance_time = detail::get_string(*root, "issuanceTime");
+	out.product_code = detail::get_string(*root, "productCode");
+	out.product_name = detail::get_string(*root, "productName");
+	out.product_text = detail::get_string(*root, "productText");
+	return {};
 }
 
-void from_json(const nlohmann::json& j, ProductTypeProperties& p) {
-	p.type_id = json_string(j, "productCode");
-	p.type_name = json_string(j, "productName");
+Result<void> deserialize_product_type_properties(std::string_view body,
+												 ProductTypeProperties& out) {
+	Result<glz::generic> root = detail::parse_root(body);
+	if (!root) {
+		return std::unexpected(root.error());
+	}
+	out.type_id = detail::get_string(*root, "productCode");
+	out.type_name = detail::get_string(*root, "productName");
+	return {};
 }
 
 } // namespace nws

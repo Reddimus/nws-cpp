@@ -7,39 +7,44 @@
 
 #include <fstream>
 #include <gtest/gtest.h>
-#include <nlohmann/json.hpp>
+#include <sstream>
+#include <string>
+#include <variant>
+#include <vector>
 
 namespace nws {
 namespace {
 
-// Helper to load fixture files
-nlohmann::json load_fixture(const std::string& filename) {
-	// Try relative to build dir, then relative to source
-	std::vector<std::string> paths = {
+// Helper to load fixture files as raw string bodies (the Glaze
+// deserializers take std::string_view, no need for a parsed AST).
+std::string load_fixture(const std::string& filename) {
+	const std::vector<std::string> paths = {
 		"../tests/fixtures/" + filename,
 		"../../tests/fixtures/" + filename,
 		"tests/fixtures/" + filename,
 	};
-	for (const auto& path : paths) {
+	for (const std::string& path : paths) {
 		std::ifstream f(path);
 		if (f.good()) {
-			return nlohmann::json::parse(f);
+			std::ostringstream ss;
+			ss << f.rdbuf();
+			return ss.str();
 		}
 	}
-	// Return empty object if not found (test will fail with clear message)
-	return nlohmann::json::object();
+	return {};
 }
 
 // ===== QuantitativeValue =====
 
 TEST(QuantitativeValueTest, FromJson) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"unitCode": "wmoUnit:degC",
 		"value": 23.0,
 		"qualityControl": "V"
-	})");
+	})";
 	QuantitativeValue qv;
-	from_json(j, qv);
+	Result<void> r = deserialize_quantitative_value(body, qv);
+	ASSERT_TRUE(r.has_value());
 	ASSERT_TRUE(qv.value.has_value());
 	EXPECT_DOUBLE_EQ(*qv.value, 23.0);
 	EXPECT_EQ(qv.unit_code, "wmoUnit:degC");
@@ -49,26 +54,28 @@ TEST(QuantitativeValueTest, FromJson) {
 }
 
 TEST(QuantitativeValueTest, FromJsonNullValue) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"unitCode": "wmoUnit:km_h-1",
 		"value": null,
 		"qualityControl": "Z"
-	})");
+	})";
 	QuantitativeValue qv;
-	from_json(j, qv);
+	Result<void> r = deserialize_quantitative_value(body, qv);
+	ASSERT_TRUE(r.has_value());
 	EXPECT_FALSE(qv.value.has_value());
 	EXPECT_EQ(qv.unit, Unit::Km_h);
 }
 
 TEST(QuantitativeValueTest, FromJsonMinMax) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"unitCode": "wmoUnit:degC",
 		"value": 20.0,
 		"minValue": 15.0,
 		"maxValue": 25.0
-	})");
+	})";
 	QuantitativeValue qv;
-	from_json(j, qv);
+	Result<void> r = deserialize_quantitative_value(body, qv);
+	ASSERT_TRUE(r.has_value());
 	ASSERT_TRUE(qv.value.has_value());
 	EXPECT_DOUBLE_EQ(*qv.value, 20.0);
 	ASSERT_TRUE(qv.min_value.has_value());
@@ -80,13 +87,14 @@ TEST(QuantitativeValueTest, FromJsonMinMax) {
 // ===== Point =====
 
 TEST(PointTest, FromJsonFixture) {
-	nlohmann::json j = load_fixture("point_response.json");
-	if (j.empty()) {
+	const std::string body = load_fixture("point_response.json");
+	if (body.empty()) {
 		GTEST_SKIP() << "Fixture not found";
 	}
 
 	PointResponse point;
-	from_json(j, point);
+	Result<void> r = deserialize_point_response(body, point);
+	ASSERT_TRUE(r.has_value());
 
 	EXPECT_EQ(point.properties.grid_id, "TOP");
 	EXPECT_EQ(point.properties.grid_x, 32);
@@ -111,13 +119,14 @@ TEST(PointTest, DefaultConstruction) {
 // ===== Forecast =====
 
 TEST(ForecastTest, FromJsonFixture) {
-	nlohmann::json j = load_fixture("forecast_response.json");
-	if (j.empty()) {
+	const std::string body = load_fixture("forecast_response.json");
+	if (body.empty()) {
 		GTEST_SKIP() << "Fixture not found";
 	}
 
 	ForecastResponse forecast;
-	from_json(j, forecast);
+	Result<void> r = deserialize_forecast_response(body, forecast);
+	ASSERT_TRUE(r.has_value());
 
 	EXPECT_FALSE(forecast.properties.update_time.empty());
 	EXPECT_FALSE(forecast.properties.generated_at.empty());
@@ -145,13 +154,14 @@ TEST(ForecastPeriodTest, DefaultConstruction) {
 // ===== Observation =====
 
 TEST(ObservationTest, FromJsonFixture) {
-	nlohmann::json j = load_fixture("observation_response.json");
-	if (j.empty()) {
+	const std::string body = load_fixture("observation_response.json");
+	if (body.empty()) {
 		GTEST_SKIP() << "Fixture not found";
 	}
 
 	ObservationResponse obs;
-	from_json(j, obs);
+	Result<void> r = deserialize_observation_response(body, obs);
+	ASSERT_TRUE(r.has_value());
 
 	EXPECT_FALSE(obs.properties.station_id.empty());
 	EXPECT_FALSE(obs.properties.timestamp.empty());
@@ -179,13 +189,14 @@ TEST(ObservationTest, DefaultConstruction) {
 // ===== Station =====
 
 TEST(StationTest, FromJsonFixture) {
-	nlohmann::json j = load_fixture("station_response.json");
-	if (j.empty()) {
+	const std::string body = load_fixture("station_response.json");
+	if (body.empty()) {
 		GTEST_SKIP() << "Fixture not found";
 	}
 
 	StationResponse station;
-	from_json(j, station);
+	Result<void> r = deserialize_station_response(body, station);
+	ASSERT_TRUE(r.has_value());
 
 	EXPECT_FALSE(station.properties.station_identifier.empty());
 	EXPECT_FALSE(station.properties.name.empty());
@@ -233,7 +244,7 @@ TEST(AlertTest, ToStringSeverity) {
 }
 
 TEST(AlertTest, FromJsonInline) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"id": "test-alert-1",
 		"type": "Feature",
 		"properties": {
@@ -257,10 +268,11 @@ TEST(AlertTest, FromJsonInline) {
 				"SAME": ["020001"]
 			}
 		}
-	})");
+	})";
 
 	AlertFeature alert;
-	from_json(j, alert);
+	Result<void> r = deserialize_alert_feature(body, alert);
+	ASSERT_TRUE(r.has_value());
 
 	EXPECT_EQ(alert.properties.event, "Severe Thunderstorm Warning");
 	EXPECT_EQ(alert.properties.severity, AlertSeverity::Severe);
@@ -271,29 +283,29 @@ TEST(AlertTest, FromJsonInline) {
 	EXPECT_EQ(*alert.properties.headline, "Test headline");
 	ASSERT_TRUE(alert.properties.instruction.has_value());
 	EXPECT_EQ(*alert.properties.instruction, "Take shelter");
-	ASSERT_EQ(alert.properties.geocode.ugc.size(), 1);
+	ASSERT_EQ(alert.properties.geocode.ugc.size(), 1u);
 	EXPECT_EQ(alert.properties.geocode.ugc[0], "KSC001");
 }
 
-// ===== GeoPoint =====
+// ===== GeoPoint (via point response with geometry round-trip) =====
 
-TEST(GeoPointTest, FromJsonObject) {
-	nlohmann::json j = nlohmann::json::parse(R"({
-		"type": "Point",
-		"coordinates": [-97.0892, 39.7456]
-	})");
-	GeoPoint p;
-	from_json(j, p);
-	EXPECT_NEAR(p.longitude, -97.0892, 0.001);
-	EXPECT_NEAR(p.latitude, 39.7456, 0.001);
-}
-
-TEST(GeoPointTest, FromJsonArray) {
-	nlohmann::json j = nlohmann::json::parse("[-97.0892, 39.7456]");
-	GeoPoint p;
-	from_json(j, p);
-	EXPECT_NEAR(p.longitude, -97.0892, 0.001);
-	EXPECT_NEAR(p.latitude, 39.7456, 0.001);
+TEST(GeoPointTest, FromPointResponseGeometry) {
+	const std::string body = R"({
+		"id": "https://example/points/1",
+		"type": "Feature",
+		"geometry": {
+			"type": "Point",
+			"coordinates": [-97.0892, 39.7456]
+		},
+		"properties": {}
+	})";
+	PointResponse resp;
+	Result<void> r = deserialize_point_response(body, resp);
+	ASSERT_TRUE(r.has_value());
+	ASSERT_TRUE(std::holds_alternative<GeoPoint>(resp.geometry));
+	const GeoPoint& gp = std::get<GeoPoint>(resp.geometry);
+	EXPECT_NEAR(gp.longitude, -97.0892, 0.001);
+	EXPECT_NEAR(gp.latitude, 39.7456, 0.001);
 }
 
 } // namespace

@@ -1,10 +1,11 @@
 #pragma once
 
+#include "nws/error.hpp"
 #include "nws/geo.hpp"
 
-#include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace nws {
@@ -35,11 +36,11 @@ struct CWAProperties {
 using CWAFeature = GeoJsonFeature<CWAProperties>;
 using CWACollectionResponse = GeoJsonFeatureCollection<CWAProperties>;
 
-void from_json(const nlohmann::json& j, SigmetProperties& p);
-void from_json(const nlohmann::json& j, SigmetFeature& r);
-void from_json(const nlohmann::json& j, SigmetCollectionResponse& r);
-void from_json(const nlohmann::json& j, CWAProperties& p);
-void from_json(const nlohmann::json& j, CWAFeature& r);
-void from_json(const nlohmann::json& j, CWACollectionResponse& r);
+[[nodiscard]] Result<void> deserialize_sigmet_feature(std::string_view body, SigmetFeature& out);
+[[nodiscard]] Result<void> deserialize_sigmet_collection(std::string_view body,
+														 SigmetCollectionResponse& out);
+[[nodiscard]] Result<void> deserialize_cwa_feature(std::string_view body, CWAFeature& out);
+[[nodiscard]] Result<void> deserialize_cwa_collection(std::string_view body,
+													  CWACollectionResponse& out);
 
 } // namespace nws

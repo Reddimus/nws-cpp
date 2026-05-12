@@ -1,4 +1,9 @@
 # Core library (error, rate limiting, retry, units)
+#
+# Glaze is header-only and pulled in via include-path only (matching how
+# nlohmann was integrated pre-migration). This sidesteps CMake's "INTERFACE
+# target not in export set" error that fires if we link glaze::glaze
+# directly onto these installable static libs.
 add_library(nws_core STATIC
     core/error.cpp
     core/rate_limit.cpp
@@ -8,7 +13,7 @@ add_library(nws_core STATIC
 target_compile_features(nws_core PUBLIC cxx_std_23)
 target_include_directories(nws_core PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<BUILD_INTERFACE:${json_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${glaze_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
@@ -25,6 +30,7 @@ target_include_directories(nws_http PUBLIC
 # Models library
 add_library(nws_models STATIC
     models/common.cpp
+    models/glaze_detail.cpp
     models/point.cpp
     models/forecast.cpp
     models/gridpoint.cpp
@@ -41,6 +47,7 @@ add_library(nws_models STATIC
 target_link_libraries(nws_models PUBLIC nws_core)
 target_include_directories(nws_models PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${glaze_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
@@ -51,6 +58,7 @@ add_library(nws_api STATIC
 target_link_libraries(nws_api PUBLIC nws_core nws_http nws_models)
 target_include_directories(nws_api PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${glaze_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
