@@ -1,12 +1,13 @@
 #pragma once
 
+#include "nws/error.hpp"
 #include "nws/geo.hpp"
 #include "nws/units.hpp"
 
 #include <cstdint>
-#include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace nws {
@@ -42,8 +43,7 @@ struct ForecastProperties {
 
 using ForecastResponse = GeoJsonFeature<ForecastProperties>;
 
-void from_json(const nlohmann::json& j, ForecastPeriod& p);
-void from_json(const nlohmann::json& j, ForecastProperties& p);
-void from_json(const nlohmann::json& j, ForecastResponse& r);
+[[nodiscard]] Result<void> deserialize_forecast_response(std::string_view body,
+														 ForecastResponse& out);
 
 } // namespace nws

@@ -1,90 +1,105 @@
+// Copyright (c) 2026 PredictionMarketsAI
+// SPDX-License-Identifier: MIT
+
 #include "nws/models/gridpoint.hpp"
 
-#include "nws/models/common.hpp"
+#include <glaze/glaze.hpp>
+#include <glaze/json/generic.hpp>
+#include <string_view>
+#include <utility>
 
-#include <nlohmann/json.hpp>
+#include "glaze_detail.hpp"
 
 namespace nws {
 
 namespace {
 
-void parse_layer(const nlohmann::json& j, const std::string& key,
-				 std::optional<GridpointLayer>& layer) {
-	if (j.contains(key) && !j[key].is_null()) {
-		GridpointLayer l;
-		from_json(j[key], l);
-		layer = std::move(l);
+void populate_layer(const glz::generic& node, GridpointLayer& layer) {
+	layer.uom = detail::get_string(node, "uom");
+	layer.unit = parse_unit_code(layer.uom);
+
+	const glz::generic* values = detail::find_array(node, "values");
+	if (values == nullptr) {
+		return;
 	}
+	const glz::generic::array_t& arr = values->get_array();
+	layer.values.clear();
+	layer.values.reserve(arr.size());
+	for (const glz::generic& v : arr) {
+		GridpointTimeValue tv;
+		tv.valid_time = detail::get_string(v, "validTime");
+		tv.value = detail::get_optional_double(v, "value");
+		layer.values.push_back(std::move(tv));
+	}
+}
+
+void maybe_layer(const glz::generic& props, const char* key,
+				 std::optional<GridpointLayer>& target) {
+	const glz::generic* node = detail::find_object(props, key);
+	if (node == nullptr) {
+		return;
+	}
+	GridpointLayer layer;
+	populate_layer(*node, layer);
+	target = std::move(layer);
+}
+
+void populate_gridpoint_properties(const glz::generic& props, GridpointProperties& p) {
+	p.update_time = detail::get_string(props, "updateTime");
+	p.valid_times = detail::get_string(props, "validTimes");
+	p.grid_id = detail::get_string(props, "gridId");
+	p.grid_x = detail::get_int(props, "gridX");
+	p.grid_y = detail::get_int(props, "gridY");
+
+	const glz::generic* elev = detail::find_object(props, "elevation");
+	if (elev != nullptr) {
+		detail::parse_quantitative_value(*elev, p.elevation);
+	}
+
+	maybe_layer(props, "temperature", p.temperature);
+	maybe_layer(props, "dewpoint", p.dewpoint);
+	maybe_layer(props, "maxTemperature", p.max_temperature);
+	maybe_layer(props, "minTemperature", p.min_temperature);
+	maybe_layer(props, "relativeHumidity", p.relative_humidity);
+	maybe_layer(props, "apparentTemperature", p.apparent_temperature);
+	maybe_layer(props, "heatIndex", p.heat_index);
+	maybe_layer(props, "windChill", p.wind_chill);
+	maybe_layer(props, "skyCover", p.sky_cover);
+	maybe_layer(props, "windDirection", p.wind_direction);
+	maybe_layer(props, "windSpeed", p.wind_speed);
+	maybe_layer(props, "windGust", p.wind_gust);
+	maybe_layer(props, "probabilityOfPrecipitation", p.probability_of_precipitation);
+	maybe_layer(props, "quantitativePrecipitation", p.quantitative_precipitation);
+	maybe_layer(props, "iceAccumulation", p.ice_accumulation);
+	maybe_layer(props, "snowfallAmount", p.snowfall_amount);
+	maybe_layer(props, "ceilingHeight", p.ceiling_height);
+	maybe_layer(props, "visibility", p.visibility);
+	maybe_layer(props, "pressure", p.pressure);
 }
 
 } // namespace
 
-void from_json(const nlohmann::json& j, GridpointTimeValue& tv) {
-	tv.valid_time = json_string(j, "validTime");
-	if (j.contains("value") && !j["value"].is_null()) {
-		tv.value = j["value"].get<double>();
-	}
-}
-
-void from_json(const nlohmann::json& j, GridpointLayer& layer) {
-	layer.uom = json_string(j, "uom");
-	layer.unit = parse_unit_code(layer.uom);
-
-	if (j.contains("values") && j["values"].is_array()) {
-		layer.values.clear();
-		for (const auto& v : j["values"]) {
-			GridpointTimeValue tv;
-			from_json(v, tv);
-			layer.values.push_back(std::move(tv));
-		}
-	}
-}
-
-void from_json(const nlohmann::json& j, GridpointProperties& p) {
-	p.update_time = json_string(j, "updateTime");
-	p.valid_times = json_string(j, "validTimes");
-	p.grid_id = json_string(j, "gridId");
-	p.grid_x = json_int(j, "gridX");
-	p.grid_y = json_int(j, "gridY");
-
-	if (j.contains("elevation") && !j["elevation"].is_null()) {
-		from_json(j["elevation"], p.elevation);
+Result<void> deserialize_gridpoint_response(std::string_view body, GridpointResponse& out) {
+	Result<glz::generic> root = detail::parse_root(body);
+	if (!root) {
+		return std::unexpected(root.error());
 	}
 
-	parse_layer(j, "temperature", p.temperature);
-	parse_layer(j, "dewpoint", p.dewpoint);
-	parse_layer(j, "maxTemperature", p.max_temperature);
-	parse_layer(j, "minTemperature", p.min_temperature);
-	parse_layer(j, "relativeHumidity", p.relative_humidity);
-	parse_layer(j, "apparentTemperature", p.apparent_temperature);
-	parse_layer(j, "heatIndex", p.heat_index);
-	parse_layer(j, "windChill", p.wind_chill);
-	parse_layer(j, "skyCover", p.sky_cover);
-	parse_layer(j, "windDirection", p.wind_direction);
-	parse_layer(j, "windSpeed", p.wind_speed);
-	parse_layer(j, "windGust", p.wind_gust);
-	parse_layer(j, "probabilityOfPrecipitation", p.probability_of_precipitation);
-	parse_layer(j, "quantitativePrecipitation", p.quantitative_precipitation);
-	parse_layer(j, "iceAccumulation", p.ice_accumulation);
-	parse_layer(j, "snowfallAmount", p.snowfall_amount);
-	parse_layer(j, "ceilingHeight", p.ceiling_height);
-	parse_layer(j, "visibility", p.visibility);
-	parse_layer(j, "pressure", p.pressure);
-}
+	out.id = detail::get_string(*root, "id");
+	std::string type = detail::get_string(*root, "type");
+	out.type = type.empty() ? "Feature" : std::move(type);
 
-void from_json(const nlohmann::json& j, GridpointResponse& r) {
-	r.id = json_string(j, "id");
-	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>() : "Feature";
-
-	if (j.contains("geometry") && !j["geometry"].is_null()) {
-		GeoPoint gp;
-		from_json(j["geometry"], gp);
-		r.geometry = gp;
+	const glz::generic* geom = detail::find_object(*root, "geometry");
+	if (geom != nullptr) {
+		out.geometry = detail::parse_geometry(*geom);
 	}
 
-	if (j.contains("properties") && !j["properties"].is_null()) {
-		from_json(j["properties"], r.properties);
+	const glz::generic* props = detail::find_object(*root, "properties");
+	if (props != nullptr) {
+		populate_gridpoint_properties(*props, out.properties);
 	}
+
+	return {};
 }
 
 } // namespace nws

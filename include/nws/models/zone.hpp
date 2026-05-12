@@ -1,11 +1,12 @@
 #pragma once
 
+#include "nws/error.hpp"
 #include "nws/geo.hpp"
 
 #include <cstdint>
-#include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace nws {
@@ -36,10 +37,10 @@ struct ZoneForecastProperties {
 	std::vector<ZoneForecastPeriod> periods;
 };
 
-void from_json(const nlohmann::json& j, ZoneProperties& p);
-void from_json(const nlohmann::json& j, ZoneFeature& r);
-void from_json(const nlohmann::json& j, ZoneCollectionResponse& r);
-void from_json(const nlohmann::json& j, ZoneForecastPeriod& p);
-void from_json(const nlohmann::json& j, ZoneForecastProperties& p);
+[[nodiscard]] Result<void> deserialize_zone_feature(std::string_view body, ZoneFeature& out);
+[[nodiscard]] Result<void> deserialize_zone_collection(std::string_view body,
+													   ZoneCollectionResponse& out);
+[[nodiscard]] Result<void> deserialize_zone_forecast(std::string_view body,
+													 ZoneForecastProperties& out);
 
 } // namespace nws

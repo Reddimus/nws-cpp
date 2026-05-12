@@ -1,6 +1,8 @@
 #include "nws/error.hpp"
 
-#include <nlohmann/json.hpp>
+#include <glaze/glaze.hpp>
+#include <glaze/json/generic.hpp>
+#include <string>
 
 namespace nws {
 
@@ -22,20 +24,31 @@ Error Error::from_response(int status, const std::string& body, const std::strin
 		err.code = ErrorCode::Unknown;
 	}
 
-	// Try to parse RFC 7807 Problem Details JSON
-	try {
-		nlohmann::json j = nlohmann::json::parse(body);
-		if (j.contains("title") && j["title"].is_string()) {
-			err.message = j["title"].get<std::string>();
+	// Try to parse RFC 7807 Problem Details JSON. We use glz::generic here
+	// (rather than a static glz::meta<ProblemDetails>) because the same
+	// helper handles arbitrary error envelopes — title/detail/correlationId
+	// may be present, missing, or null, and there's no schema we want to
+	// reject on.
+	glz::generic root{};
+	glz::error_ctx ec = glz::read_json(root, body);
+	if (!ec && root.is_object()) {
+		const glz::generic::object_t& obj = root.get_object();
+		glz::generic::object_t::const_iterator it;
+		it = obj.find("title");
+		if (it != obj.end() && it->second.is_string()) {
+			err.message = it->second.get<std::string>();
 		}
-		if (j.contains("detail") && j["detail"].is_string()) {
-			err.detail = j["detail"].get<std::string>();
+		it = obj.find("detail");
+		if (it != obj.end() && it->second.is_string()) {
+			err.detail = it->second.get<std::string>();
 		}
-		if (err.correlation_id.empty() && j.contains("correlationId") &&
-			j["correlationId"].is_string()) {
-			err.correlation_id = j["correlationId"].get<std::string>();
+		if (err.correlation_id.empty()) {
+			it = obj.find("correlationId");
+			if (it != obj.end() && it->second.is_string()) {
+				err.correlation_id = it->second.get<std::string>();
+			}
 		}
-	} catch (...) {
+	} else {
 		// Not valid JSON — use raw body as message
 		err.message = body.substr(0, 256);
 	}

@@ -2,7 +2,7 @@
 #include "nws/models/common.hpp"
 
 #include <gtest/gtest.h>
-#include <nlohmann/json.hpp>
+#include <string>
 
 namespace nws {
 namespace {
@@ -80,96 +80,128 @@ TEST(GetProductsParamsTest, AllOptional) {
 }
 
 // ===== Null-safety regression tests =====
+//
+// These exercise the pre-migration guarantee that every null-able JSON
+// field decodes to a default value (empty string, default-constructed
+// optional, etc.) without throwing or producing garbage. The post-Glaze
+// pipeline preserves this via the detail::get_*() helpers, which treat
+// missing / null / type-mismatched values uniformly.
 
 TEST(NullSafetyTest, QuantitativeValueWithAllNulls) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"unitCode": null,
 		"value": null,
 		"qualityControl": null
-	})");
+	})";
 	QuantitativeValue qv;
-	EXPECT_NO_THROW(from_json(j, qv));
+	Result<void> r = deserialize_quantitative_value(body, qv);
+	ASSERT_TRUE(r.has_value());
 	EXPECT_FALSE(qv.has_value());
 	EXPECT_TRUE(qv.unit_code.empty());
 }
 
 TEST(NullSafetyTest, PointPropertiesWithNullFields) {
-	nlohmann::json j = nlohmann::json::parse(R"({
-		"@id": null,
-		"gridId": null,
-		"gridX": null,
-		"gridY": null,
-		"forecast": null,
-		"timeZone": null,
-		"radarStation": null
-	})");
-	PointProperties p;
-	EXPECT_NO_THROW(from_json(j, p));
-	EXPECT_TRUE(p.grid_id.empty());
-	EXPECT_EQ(p.grid_x, 0);
+	const std::string body = R"({
+		"id": null,
+		"type": "Feature",
+		"properties": {
+			"@id": null,
+			"gridId": null,
+			"gridX": null,
+			"gridY": null,
+			"forecast": null,
+			"timeZone": null,
+			"radarStation": null
+		}
+	})";
+	PointResponse p;
+	Result<void> r = deserialize_point_response(body, p);
+	ASSERT_TRUE(r.has_value());
+	EXPECT_TRUE(p.properties.grid_id.empty());
+	EXPECT_EQ(p.properties.grid_x, 0);
 }
 
 TEST(NullSafetyTest, ForecastPeriodWithNullFields) {
-	nlohmann::json j = nlohmann::json::parse(R"({
-		"number": null,
-		"name": null,
-		"startTime": null,
-		"endTime": null,
-		"isDaytime": null,
-		"temperature": null,
-		"temperatureUnit": null,
-		"temperatureTrend": null,
-		"windSpeed": null,
-		"windDirection": null,
-		"shortForecast": null,
-		"detailedForecast": null
-	})");
-	ForecastPeriod p;
-	EXPECT_NO_THROW(from_json(j, p));
-	EXPECT_TRUE(p.name.empty());
+	const std::string body = R"({
+		"id": null,
+		"type": "Feature",
+		"properties": {
+			"updateTime": null,
+			"generatedAt": null,
+			"periods": [{
+				"number": null,
+				"name": null,
+				"startTime": null,
+				"endTime": null,
+				"isDaytime": null,
+				"temperature": null,
+				"temperatureUnit": null,
+				"temperatureTrend": null,
+				"windSpeed": null,
+				"windDirection": null,
+				"shortForecast": null,
+				"detailedForecast": null
+			}]
+		}
+	})";
+	ForecastResponse f;
+	Result<void> r = deserialize_forecast_response(body, f);
+	ASSERT_TRUE(r.has_value());
+	ASSERT_EQ(f.properties.periods.size(), 1u);
+	EXPECT_TRUE(f.properties.periods[0].name.empty());
 }
 
 TEST(NullSafetyTest, ObservationWithNullMeasurements) {
-	nlohmann::json j = nlohmann::json::parse(R"({
-		"@id": null,
-		"station": null,
-		"stationId": null,
-		"timestamp": null,
-		"textDescription": null,
-		"temperature": {"unitCode": "wmoUnit:degC", "value": null},
-		"windSpeed": {"unitCode": "wmoUnit:km_h-1", "value": null}
-	})");
-	ObservationProperties p;
-	EXPECT_NO_THROW(from_json(j, p));
-	EXPECT_FALSE(p.temperature.has_value());
-	EXPECT_EQ(p.temperature.unit, Unit::DegC);
+	const std::string body = R"({
+		"id": null,
+		"type": "Feature",
+		"properties": {
+			"@id": null,
+			"station": null,
+			"stationId": null,
+			"timestamp": null,
+			"textDescription": null,
+			"temperature": {"unitCode": "wmoUnit:degC", "value": null},
+			"windSpeed": {"unitCode": "wmoUnit:km_h-1", "value": null}
+		}
+	})";
+	ObservationResponse o;
+	Result<void> r = deserialize_observation_response(body, o);
+	ASSERT_TRUE(r.has_value());
+	EXPECT_FALSE(o.properties.temperature.has_value());
+	EXPECT_EQ(o.properties.temperature.unit, Unit::DegC);
 }
 
 TEST(NullSafetyTest, AlertWithNullFields) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"id": null,
-		"areaDesc": null,
-		"severity": null,
-		"certainty": null,
-		"urgency": null,
-		"status": null,
-		"messageType": null,
-		"event": null,
-		"headline": null,
-		"description": null,
-		"instruction": null,
-		"sent": null,
-		"effective": null,
-		"expires": null
-	})");
-	AlertProperties p;
-	EXPECT_NO_THROW(from_json(j, p));
-	EXPECT_TRUE(p.id.empty());
-	EXPECT_EQ(p.severity, AlertSeverity::Unknown);
+		"type": "Feature",
+		"properties": {
+			"id": null,
+			"areaDesc": null,
+			"severity": null,
+			"certainty": null,
+			"urgency": null,
+			"status": null,
+			"messageType": null,
+			"event": null,
+			"headline": null,
+			"description": null,
+			"instruction": null,
+			"sent": null,
+			"effective": null,
+			"expires": null
+		}
+	})";
+	AlertFeature a;
+	Result<void> r = deserialize_alert_feature(body, a);
+	ASSERT_TRUE(r.has_value());
+	EXPECT_TRUE(a.properties.id.empty());
+	EXPECT_EQ(a.properties.severity, AlertSeverity::Unknown);
 }
 
 TEST(NullSafetyTest, ErrorFromResponseWithNullJsonFields) {
-	std::string body = R"({"title": null, "detail": null, "correlationId": null})";
+	const std::string body = R"({"title": null, "detail": null, "correlationId": null})";
 	Error err;
 	EXPECT_NO_THROW(err = Error::from_response(500, body));
 	EXPECT_EQ(err.code, ErrorCode::ServerError);

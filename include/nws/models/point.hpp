@@ -1,12 +1,13 @@
 #pragma once
 
+#include "nws/error.hpp"
 #include "nws/geo.hpp"
 #include "nws/units.hpp"
 
 #include <cstdint>
-#include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <string>
+#include <string_view>
 
 namespace nws {
 
@@ -41,7 +42,6 @@ struct PointProperties {
 
 using PointResponse = GeoJsonFeature<PointProperties>;
 
-void from_json(const nlohmann::json& j, PointProperties& p);
-void from_json(const nlohmann::json& j, PointResponse& r);
+[[nodiscard]] Result<void> deserialize_point_response(std::string_view body, PointResponse& out);
 
 } // namespace nws

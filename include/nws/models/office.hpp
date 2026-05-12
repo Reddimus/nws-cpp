@@ -1,8 +1,10 @@
 #pragma once
 
-#include <nlohmann/json_fwd.hpp>
+#include "nws/error.hpp"
+
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace nws {
@@ -31,7 +33,9 @@ struct HeadlineProperties {
 	std::string issuance_time;
 };
 
-void from_json(const nlohmann::json& j, OfficeProperties& p);
-void from_json(const nlohmann::json& j, HeadlineProperties& p);
+[[nodiscard]] Result<void> deserialize_office_properties(std::string_view body,
+														 OfficeProperties& out);
+[[nodiscard]] Result<void> deserialize_headline_properties(std::string_view body,
+														   HeadlineProperties& out);
 
 } // namespace nws

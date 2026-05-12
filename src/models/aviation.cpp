@@ -1,81 +1,133 @@
+// Copyright (c) 2026 PredictionMarketsAI
+// SPDX-License-Identifier: MIT
+
 #include "nws/models/aviation.hpp"
 
-#include "nws/models/common.hpp"
+#include <glaze/glaze.hpp>
+#include <glaze/json/generic.hpp>
+#include <string_view>
+#include <utility>
 
-#include <nlohmann/json.hpp>
+#include "glaze_detail.hpp"
 
 namespace nws {
 
-void from_json(const nlohmann::json& j, SigmetProperties& p) {
-	p.id = json_string(j, "id");
-	p.atsu = json_string(j, "atsu");
-	p.sequence = json_string(j, "sequence");
-	p.phenomenon = json_string(j, "phenomenon");
-	p.valid_time_from = json_string(j, "validTimeFrom");
-	p.valid_time_to = json_string(j, "validTimeTo");
+namespace {
+
+void populate_sigmet_properties(const glz::generic& props, SigmetProperties& p) {
+	p.id = detail::get_string(props, "id");
+	p.atsu = detail::get_string(props, "atsu");
+	p.sequence = detail::get_string(props, "sequence");
+	p.phenomenon = detail::get_string(props, "phenomenon");
+	p.valid_time_from = detail::get_string(props, "validTimeFrom");
+	p.valid_time_to = detail::get_string(props, "validTimeTo");
 }
 
-void from_json(const nlohmann::json& j, SigmetFeature& r) {
-	r.id = json_string(j, "id");
-	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>() : "Feature";
+void populate_sigmet_feature(const glz::generic& root, SigmetFeature& r) {
+	r.id = detail::get_string(root, "id");
+	std::string type = detail::get_string(root, "type");
+	r.type = type.empty() ? "Feature" : std::move(type);
 
-	if (j.contains("geometry") && !j["geometry"].is_null()) {
-		GeoPoint gp;
-		from_json(j["geometry"], gp);
-		r.geometry = gp;
+	const glz::generic* geom = detail::find_object(root, "geometry");
+	if (geom != nullptr) {
+		r.geometry = detail::parse_geometry(*geom);
 	}
 
-	if (j.contains("properties") && !j["properties"].is_null()) {
-		from_json(j["properties"], r.properties);
-	}
-}
-
-void from_json(const nlohmann::json& j, SigmetCollectionResponse& r) {
-	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>()
-														 : "FeatureCollection";
-	if (j.contains("features") && j["features"].is_array()) {
-		for (const auto& feat : j["features"]) {
-			SigmetFeature sigmet;
-			from_json(feat, sigmet);
-			r.features.push_back(std::move(sigmet));
-		}
+	const glz::generic* props = detail::find_object(root, "properties");
+	if (props != nullptr) {
+		populate_sigmet_properties(*props, r.properties);
 	}
 }
 
-void from_json(const nlohmann::json& j, CWAProperties& p) {
-	p.id = json_string(j, "id");
-	p.cwsu = json_string(j, "cwsu");
-	p.sequence = json_string(j, "sequence");
-	p.text = json_string(j, "text");
-	p.valid_time_from = json_string(j, "validTimeFrom");
-	p.valid_time_to = json_string(j, "validTimeTo");
+void populate_cwa_properties(const glz::generic& props, CWAProperties& p) {
+	p.id = detail::get_string(props, "id");
+	p.cwsu = detail::get_string(props, "cwsu");
+	p.sequence = detail::get_string(props, "sequence");
+	p.text = detail::get_string(props, "text");
+	p.valid_time_from = detail::get_string(props, "validTimeFrom");
+	p.valid_time_to = detail::get_string(props, "validTimeTo");
 }
 
-void from_json(const nlohmann::json& j, CWAFeature& r) {
-	r.id = json_string(j, "id");
-	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>() : "Feature";
+void populate_cwa_feature(const glz::generic& root, CWAFeature& r) {
+	r.id = detail::get_string(root, "id");
+	std::string type = detail::get_string(root, "type");
+	r.type = type.empty() ? "Feature" : std::move(type);
 
-	if (j.contains("geometry") && !j["geometry"].is_null()) {
-		GeoPoint gp;
-		from_json(j["geometry"], gp);
-		r.geometry = gp;
+	const glz::generic* geom = detail::find_object(root, "geometry");
+	if (geom != nullptr) {
+		r.geometry = detail::parse_geometry(*geom);
 	}
 
-	if (j.contains("properties") && !j["properties"].is_null()) {
-		from_json(j["properties"], r.properties);
+	const glz::generic* props = detail::find_object(root, "properties");
+	if (props != nullptr) {
+		populate_cwa_properties(*props, r.properties);
 	}
 }
 
-void from_json(const nlohmann::json& j, CWACollectionResponse& r) {
-	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>()
-														 : "FeatureCollection";
-	if (j.contains("features") && j["features"].is_array()) {
-		for (const auto& feat : j["features"]) {
-			CWAFeature cwa;
-			from_json(feat, cwa);
-			r.features.push_back(std::move(cwa));
-		}
+} // namespace
+
+Result<void> deserialize_sigmet_feature(std::string_view body, SigmetFeature& out) {
+	Result<glz::generic> root = detail::parse_root(body);
+	if (!root) {
+		return std::unexpected(root.error());
 	}
+	populate_sigmet_feature(*root, out);
+	return {};
+}
+
+Result<void> deserialize_sigmet_collection(std::string_view body, SigmetCollectionResponse& out) {
+	Result<glz::generic> root = detail::parse_root(body);
+	if (!root) {
+		return std::unexpected(root.error());
+	}
+
+	std::string type = detail::get_string(*root, "type");
+	out.type = type.empty() ? "FeatureCollection" : std::move(type);
+
+	const glz::generic* features = detail::find_array(*root, "features");
+	if (features == nullptr) {
+		return {};
+	}
+	const glz::generic::array_t& arr = features->get_array();
+	out.features.reserve(arr.size());
+	for (const glz::generic& feat : arr) {
+		SigmetFeature sigmet;
+		populate_sigmet_feature(feat, sigmet);
+		out.features.push_back(std::move(sigmet));
+	}
+	return {};
+}
+
+Result<void> deserialize_cwa_feature(std::string_view body, CWAFeature& out) {
+	Result<glz::generic> root = detail::parse_root(body);
+	if (!root) {
+		return std::unexpected(root.error());
+	}
+	populate_cwa_feature(*root, out);
+	return {};
+}
+
+Result<void> deserialize_cwa_collection(std::string_view body, CWACollectionResponse& out) {
+	Result<glz::generic> root = detail::parse_root(body);
+	if (!root) {
+		return std::unexpected(root.error());
+	}
+
+	std::string type = detail::get_string(*root, "type");
+	out.type = type.empty() ? "FeatureCollection" : std::move(type);
+
+	const glz::generic* features = detail::find_array(*root, "features");
+	if (features == nullptr) {
+		return {};
+	}
+	const glz::generic::array_t& arr = features->get_array();
+	out.features.reserve(arr.size());
+	for (const glz::generic& feat : arr) {
+		CWAFeature cwa;
+		populate_cwa_feature(feat, cwa);
+		out.features.push_back(std::move(cwa));
+	}
+	return {};
 }
 
 } // namespace nws

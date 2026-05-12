@@ -1,22 +1,31 @@
 #pragma once
 
+/// @file common.hpp
+/// @brief Common model deserializers shared across all NWS API responses
+///
+/// Backed by [Glaze](https://github.com/stephenberry/glaze) for JSON
+/// deserialization. The public surface is the struct definitions in
+/// `nws/units.hpp` and `nws/geo.hpp` plus the `deserialize_*(std::string_view, T&)`
+/// family used by `api/client.cpp`. The previous
+/// `from_json(const nlohmann::json&, T&)` overloads and the
+/// `json_string()` / `json_int()` helpers have been removed; downstream
+/// consumers (kalshi-trader, polymarket-trader) only use the high-level
+/// `NWSClient::get_*` methods, never these internal helpers.
+
+#include "nws/error.hpp"
 #include "nws/units.hpp"
 
-#include <nlohmann/json_fwd.hpp>
-#include <string>
+#include <string_view>
 
 namespace nws {
 
-/// Parse a QuantitativeValue from NWS JSON
-void from_json(const nlohmann::json& j, QuantitativeValue& qv);
+// ===== Top-level deserializer for QuantitativeValue =====
+//
+// Most NWS responses embed many QuantitativeValue subfields; those are
+// parsed inline by the per-response Glaze walks. This helper is exposed
+// only for the test suite's null-safety regression coverage.
 
-/// Parse a GeoPoint from GeoJSON coordinates
-void from_json(const nlohmann::json& j, struct GeoPoint& p);
-
-/// Safely extract a string from JSON (handles null values)
-[[nodiscard]] std::string json_string(const nlohmann::json& j, const char* key);
-
-/// Safely extract an int from JSON (handles null values)
-[[nodiscard]] std::int32_t json_int(const nlohmann::json& j, const char* key, std::int32_t def = 0);
+[[nodiscard]] Result<void> deserialize_quantitative_value(std::string_view body,
+														  QuantitativeValue& out);
 
 } // namespace nws

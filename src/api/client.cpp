@@ -2,7 +2,11 @@
 #include "nws/models/common.hpp"
 
 #include <format>
-#include <nlohmann/json.hpp>
+#include <glaze/glaze.hpp>
+#include <glaze/json/generic.hpp>
+#include <string>
+#include <string_view>
+#include <utility>
 
 namespace nws {
 
@@ -64,6 +68,21 @@ std::string get_correlation_id(const HttpResponse& resp) {
 	return {};
 }
 
+// Common HTTP-result handling: status check + body/error extraction.
+// On success returns the body string; on failure unpacks the http error
+// into a parse-able Error. Used uniformly by every endpoint handler so
+// the per-endpoint code path is a single deserialize_*() call.
+Result<std::string> body_or_error(Result<HttpResponse>&& http_result) {
+	if (!http_result) {
+		return std::unexpected(http_result.error());
+	}
+	if (http_result->status_code != 200) {
+		return std::unexpected(Error::from_response(http_result->status_code, http_result->body,
+													get_correlation_id(*http_result)));
+	}
+	return std::move(http_result->body);
+}
+
 } // namespace
 
 // ===== Points API =====
@@ -80,29 +99,23 @@ Result<PointResponse> NWSClient::get_point(double latitude, double longitude) {
 		}
 	}
 
-	Result<HttpResponse> result = do_get(std::format("/points/{},{}", latitude, longitude));
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body =
+		body_or_error(do_get(std::format("/points/{},{}", latitude, longitude)));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(
-			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	PointResponse response;
+	Result<void> parse = deserialize_point_response(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
 
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		PointResponse response;
-		from_json(j, response);
-
-		// Cache the result
-		if (impl_->points_cache) {
-			impl_->points_cache->put(CoordinateKey{latitude, longitude}, response.properties);
-		}
-
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
+	// Cache the result
+	if (impl_->points_cache) {
+		impl_->points_cache->put(CoordinateKey{latitude, longitude}, response.properties);
 	}
+
+	return response;
 }
 
 // ===== Gridpoints/Forecasts API =====
@@ -115,23 +128,16 @@ Result<ForecastResponse> NWSClient::get_forecast(const std::string& wfo, std::in
 		path += (*units == UnitSystem::SI) ? "?units=si" : "?units=us";
 	}
 
-	Result<HttpResponse> result = do_get(path);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get(path));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(
-			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	ForecastResponse response;
+	Result<void> parse = deserialize_forecast_response(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		ForecastResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 Result<ForecastResponse> NWSClient::get_forecast_hourly(const std::string& wfo, std::int32_t x,
@@ -143,23 +149,16 @@ Result<ForecastResponse> NWSClient::get_forecast_hourly(const std::string& wfo, 
 		path += (*units == UnitSystem::SI) ? "?units=si" : "?units=us";
 	}
 
-	Result<HttpResponse> result = do_get(path);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get(path));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(
-			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	ForecastResponse response;
+	Result<void> parse = deserialize_forecast_response(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		ForecastResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 Result<StationCollectionResponse>
@@ -167,45 +166,31 @@ NWSClient::get_gridpoint_stations(const std::string& wfo, std::int32_t x, std::i
 	std::string path =
 		"/gridpoints/" + wfo + "/" + std::to_string(x) + "," + std::to_string(y) + "/stations";
 
-	Result<HttpResponse> result = do_get(path);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get(path));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(
-			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	StationCollectionResponse response;
+	Result<void> parse = deserialize_station_collection(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		StationCollectionResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 // ===== Stations API =====
 
 Result<StationResponse> NWSClient::get_station(const std::string& station_id) {
-	Result<HttpResponse> result = do_get("/stations/" + station_id);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get("/stations/" + station_id));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(
-			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	StationResponse response;
+	Result<void> parse = deserialize_station_response(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		StationResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 // ===== Observations API =====
@@ -233,43 +218,30 @@ NWSClient::get_observations(const std::string& station_id, const GetObservations
 	std::string path = "/stations/" + station_id + "/observations";
 	path += build_observations_query(params);
 
-	Result<HttpResponse> result = do_get(path);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get(path));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(
-			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	ObservationCollectionResponse response;
+	Result<void> parse = deserialize_observation_collection(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		ObservationCollectionResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 Result<ObservationResponse> NWSClient::get_latest_observation(const std::string& station_id) {
-	Result<HttpResponse> result = do_get("/stations/" + station_id + "/observations/latest");
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body =
+		body_or_error(do_get("/stations/" + station_id + "/observations/latest"));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(
-			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	ObservationResponse response;
+	Result<void> parse = deserialize_observation_response(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		ObservationResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 // ===== Alerts API =====
@@ -323,146 +295,114 @@ std::string NWSClient::build_alerts_query(const GetAlertsParams& params) {
 Result<AlertCollectionResponse> NWSClient::get_alerts(const GetAlertsParams& params) {
 	std::string path = "/alerts" + build_alerts_query(params);
 
-	Result<HttpResponse> result = do_get(path);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get(path));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(
-			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	AlertCollectionResponse response;
+	Result<void> parse = deserialize_alert_collection(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		AlertCollectionResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 Result<AlertCollectionResponse> NWSClient::get_active_alerts(const GetAlertsParams& params) {
 	std::string path = "/alerts/active" + build_alerts_query(params);
 
-	Result<HttpResponse> result = do_get(path);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get(path));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(
-			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	AlertCollectionResponse response;
+	Result<void> parse = deserialize_alert_collection(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		AlertCollectionResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 Result<AlertActiveCount> NWSClient::get_active_alert_count() {
-	Result<HttpResponse> result = do_get("/alerts/active/count");
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get("/alerts/active/count"));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(
-			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	AlertActiveCount response;
+	Result<void> parse = deserialize_alert_active_count(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		AlertActiveCount response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 Result<AlertCollectionResponse> NWSClient::get_active_alerts_by_area(const std::string& area) {
-	Result<HttpResponse> result = do_get("/alerts/active/area/" + area);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get("/alerts/active/area/" + area));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(
-			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	AlertCollectionResponse response;
+	Result<void> parse = deserialize_alert_collection(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		AlertCollectionResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 Result<AlertCollectionResponse> NWSClient::get_active_alerts_by_zone(const std::string& zone_id) {
-	Result<HttpResponse> result = do_get("/alerts/active/zone/" + zone_id);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get("/alerts/active/zone/" + zone_id));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(
-			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	AlertCollectionResponse response;
+	Result<void> parse = deserialize_alert_collection(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		AlertCollectionResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 Result<AlertFeature> NWSClient::get_alert(const std::string& id) {
-	Result<HttpResponse> result = do_get("/alerts/" + id);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get("/alerts/" + id));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(
-			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	AlertFeature response;
+	Result<void> parse = deserialize_alert_feature(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		AlertFeature response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 Result<std::vector<std::string>> NWSClient::get_alert_types() {
-	Result<HttpResponse> result = do_get("/alerts/types");
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get("/alerts/types"));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(
-			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	// Small one-off shape: {"eventTypes": [...]}. Use glz::generic
+	// directly here instead of carving out yet another deserialize_*.
+	glz::generic root{};
+	glz::error_ctx ec = glz::read_json(root, *body);
+	if (ec) {
+		return std::unexpected(Error::parse(glz::format_error(ec, *body)));
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		if (j.contains("eventTypes") && j["eventTypes"].is_array()) {
-			return j["eventTypes"].get<std::vector<std::string>>();
-		}
+	if (!root.is_object()) {
 		return std::vector<std::string>{};
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
 	}
+	const glz::generic::object_t& obj = root.get_object();
+	glz::generic::object_t::const_iterator it = obj.find("eventTypes");
+	if (it == obj.end() || !it->second.is_array()) {
+		return std::vector<std::string>{};
+	}
+	std::vector<std::string> out;
+	const glz::generic::array_t& arr = it->second.get_array();
+	out.reserve(arr.size());
+	for (const glz::generic& v : arr) {
+		if (v.is_string()) {
+			out.push_back(v.get<std::string>());
+		}
+	}
+	return out;
 }
 
 // ===== Gridpoints API =====
@@ -471,90 +411,62 @@ Result<GridpointResponse> NWSClient::get_gridpoint(const std::string& wfo, std::
 												   std::int32_t y) {
 	std::string path = "/gridpoints/" + wfo + "/" + std::to_string(x) + "," + std::to_string(y);
 
-	Result<HttpResponse> result = do_get(path);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get(path));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(
-			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	GridpointResponse response;
+	Result<void> parse = deserialize_gridpoint_response(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		GridpointResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 // ===== Zones API =====
 
 Result<ZoneFeature> NWSClient::get_zone(const std::string& type, const std::string& zone_id) {
-	Result<HttpResponse> result = do_get("/zones/" + type + "/" + zone_id);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get("/zones/" + type + "/" + zone_id));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(
-			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	ZoneFeature response;
+	Result<void> parse = deserialize_zone_feature(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		ZoneFeature response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 Result<ZoneForecastProperties> NWSClient::get_zone_forecast(const std::string& type,
 															const std::string& zone_id) {
-	Result<HttpResponse> result = do_get("/zones/" + type + "/" + zone_id + "/forecast");
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body =
+		body_or_error(do_get("/zones/" + type + "/" + zone_id + "/forecast"));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(
-			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	ZoneForecastProperties response;
+	// deserialize_zone_forecast unwraps the {properties:{...}} envelope.
+	Result<void> parse = deserialize_zone_forecast(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		ZoneForecastProperties response;
-		if (j.contains("properties") && !j["properties"].is_null()) {
-			from_json(j["properties"], response);
-		}
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 // ===== Glossary API =====
 
 Result<GlossaryResponse> NWSClient::get_glossary() {
-	Result<HttpResponse> result = do_get("/glossary");
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get("/glossary"));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(
-			Error::from_response(result->status_code, result->body, get_correlation_id(*result)));
+	GlossaryResponse response;
+	Result<void> parse = deserialize_glossary_response(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		GlossaryResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 // ===== Convenience Methods =====

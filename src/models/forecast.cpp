@@ -1,78 +1,108 @@
+// Copyright (c) 2026 PredictionMarketsAI
+// SPDX-License-Identifier: MIT
+
 #include "nws/models/forecast.hpp"
 
-#include "nws/models/common.hpp"
+#include <glaze/glaze.hpp>
+#include <glaze/json/generic.hpp>
+#include <string>
+#include <string_view>
 
-#include <nlohmann/json.hpp>
+#include "glaze_detail.hpp"
 
 namespace nws {
 
-void from_json(const nlohmann::json& j, ForecastPeriod& p) {
-	p.number = json_int(j, "number");
-	p.name = json_string(j, "name");
-	p.start_time = json_string(j, "startTime");
-	p.end_time = json_string(j, "endTime");
-	p.is_daytime =
-		j.contains("isDaytime") && j["isDaytime"].is_boolean() ? j["isDaytime"].get<bool>() : true;
-	p.temperature = json_int(j, "temperature");
-	p.temperature_unit = json_string(j, "temperatureUnit");
+namespace {
 
-	if (j.contains("temperatureTrend") && j["temperatureTrend"].is_string()) {
-		p.temperature_trend = j["temperatureTrend"].get<std::string>();
+void populate_forecast_period(const glz::generic& node, ForecastPeriod& p) {
+	p.number = detail::get_int(node, "number");
+	p.name = detail::get_string(node, "name");
+	p.start_time = detail::get_string(node, "startTime");
+	p.end_time = detail::get_string(node, "endTime");
+	p.is_daytime = detail::get_bool(node, "isDaytime", true);
+	p.temperature = detail::get_int(node, "temperature");
+	p.temperature_unit = detail::get_string(node, "temperatureUnit");
+	p.temperature_trend = detail::get_optional_string(node, "temperatureTrend");
+
+	const glz::generic* pop = detail::find_object(node, "probabilityOfPrecipitation");
+	if (pop != nullptr) {
+		detail::parse_quantitative_value(*pop, p.probability_of_precipitation);
 	}
 
-	if (j.contains("probabilityOfPrecipitation") && !j["probabilityOfPrecipitation"].is_null()) {
-		from_json(j["probabilityOfPrecipitation"], p.probability_of_precipitation);
-	}
-
-	if (j.contains("windSpeed")) {
-		if (j["windSpeed"].is_string()) {
-			p.wind_speed = j["windSpeed"].get<std::string>();
-		} else if (j["windSpeed"].is_object()) {
-			const auto& ws = j["windSpeed"];
-			double qv_val =
-				ws.contains("value") && ws["value"].is_number() ? ws["value"].get<double>() : 0.0;
-			std::string qv_unit = json_string(ws, "unitCode");
-			p.wind_speed = std::to_string(static_cast<int>(qv_val)) + " " + qv_unit;
+	// windSpeed: sometimes a string like "10 to 15 mph", sometimes a
+	// QuantitativeValue object. The pre-migration code coerced both into a
+	// std::string, so we mirror that behaviour exactly.
+	if (node.is_object()) {
+		glz::generic::object_t::const_iterator ws_it = node.get_object().find("windSpeed");
+		if (ws_it != node.get_object().end()) {
+			const glz::generic& ws = ws_it->second;
+			if (ws.is_string()) {
+				p.wind_speed = ws.get<std::string>();
+			} else if (ws.is_object()) {
+				std::optional<double> v = detail::get_optional_double(ws, "value");
+				std::string unit = detail::get_string(ws, "unitCode");
+				if (v) {
+					p.wind_speed = std::to_string(static_cast<int>(*v));
+					if (!unit.empty()) {
+						p.wind_speed += " ";
+						p.wind_speed += unit;
+					}
+				}
+			}
 		}
 	}
 
-	p.wind_direction = json_string(j, "windDirection");
-	p.icon = json_string(j, "icon");
-	p.short_forecast = json_string(j, "shortForecast");
-	p.detailed_forecast = json_string(j, "detailedForecast");
+	p.wind_direction = detail::get_string(node, "windDirection");
+	p.icon = detail::get_string(node, "icon");
+	p.short_forecast = detail::get_string(node, "shortForecast");
+	p.detailed_forecast = detail::get_string(node, "detailedForecast");
 }
 
-void from_json(const nlohmann::json& j, ForecastProperties& p) {
-	p.update_time = json_string(j, "updateTime");
-	p.generated_at = json_string(j, "generatedAt");
+void populate_forecast_properties(const glz::generic& props, ForecastProperties& p) {
+	p.update_time = detail::get_string(props, "updateTime");
+	p.generated_at = detail::get_string(props, "generatedAt");
 
-	if (j.contains("elevation") && !j["elevation"].is_null()) {
-		from_json(j["elevation"], p.elevation);
+	const glz::generic* elev = detail::find_object(props, "elevation");
+	if (elev != nullptr) {
+		detail::parse_quantitative_value(*elev, p.elevation);
 	}
 
-	if (j.contains("periods") && j["periods"].is_array()) {
+	const glz::generic* periods = detail::find_array(props, "periods");
+	if (periods != nullptr) {
+		const glz::generic::array_t& arr = periods->get_array();
 		p.periods.clear();
-		for (const auto& period_json : j["periods"]) {
+		p.periods.reserve(arr.size());
+		for (const glz::generic& period_json : arr) {
 			ForecastPeriod period;
-			from_json(period_json, period);
+			populate_forecast_period(period_json, period);
 			p.periods.push_back(std::move(period));
 		}
 	}
 }
 
-void from_json(const nlohmann::json& j, ForecastResponse& r) {
-	r.id = json_string(j, "id");
-	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>() : "Feature";
+} // namespace
 
-	if (j.contains("geometry") && !j["geometry"].is_null()) {
-		GeoPoint gp;
-		from_json(j["geometry"], gp);
-		r.geometry = gp;
+Result<void> deserialize_forecast_response(std::string_view body, ForecastResponse& out) {
+	Result<glz::generic> root = detail::parse_root(body);
+	if (!root) {
+		return std::unexpected(root.error());
 	}
 
-	if (j.contains("properties") && !j["properties"].is_null()) {
-		from_json(j["properties"], r.properties);
+	out.id = detail::get_string(*root, "id");
+	std::string type = detail::get_string(*root, "type");
+	out.type = type.empty() ? "Feature" : std::move(type);
+
+	const glz::generic* geom = detail::find_object(*root, "geometry");
+	if (geom != nullptr) {
+		out.geometry = detail::parse_geometry(*geom);
 	}
+
+	const glz::generic* props = detail::find_object(*root, "properties");
+	if (props != nullptr) {
+		populate_forecast_properties(*props, out.properties);
+	}
+
+	return {};
 }
 
 } // namespace nws

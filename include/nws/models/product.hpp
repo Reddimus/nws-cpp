@@ -1,8 +1,10 @@
 #pragma once
 
-#include <nlohmann/json_fwd.hpp>
+#include "nws/error.hpp"
+
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace nws {
@@ -24,7 +26,9 @@ struct ProductTypeProperties {
 	std::string type_name;
 };
 
-void from_json(const nlohmann::json& j, ProductProperties& p);
-void from_json(const nlohmann::json& j, ProductTypeProperties& p);
+[[nodiscard]] Result<void> deserialize_product_properties(std::string_view body,
+														  ProductProperties& out);
+[[nodiscard]] Result<void> deserialize_product_type_properties(std::string_view body,
+															   ProductTypeProperties& out);
 
 } // namespace nws

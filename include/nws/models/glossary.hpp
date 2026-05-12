@@ -1,7 +1,9 @@
 #pragma once
 
-#include <nlohmann/json_fwd.hpp>
+#include "nws/error.hpp"
+
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace nws {
@@ -17,7 +19,7 @@ struct GlossaryResponse {
 	std::vector<GlossaryTerm> glossary;
 };
 
-void from_json(const nlohmann::json& j, GlossaryTerm& t);
-void from_json(const nlohmann::json& j, GlossaryResponse& r);
+[[nodiscard]] Result<void> deserialize_glossary_response(std::string_view body,
+														 GlossaryResponse& out);
 
 } // namespace nws
