@@ -6,6 +6,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-12
+
 ### Build
 
 - **JSON: nlohmann/json → Glaze v7.6.0**. Compile-time-reflection JSON
@@ -109,5 +111,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Mermaid architecture diagram + API references in README
 - 137 unit tests via GoogleTest (FetchContent)
 
-[Unreleased]: https://github.com/Reddimus/nws-cpp/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Reddimus/nws-cpp/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Reddimus/nws-cpp/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/Reddimus/nws-cpp/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Reddimus/nws-cpp/releases/tag/v0.1.0
