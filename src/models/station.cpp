@@ -1,50 +1,83 @@
+// Copyright (c) 2026 PredictionMarketsAI
+// SPDX-License-Identifier: MIT
+
 #include "nws/models/station.hpp"
 
-#include "nws/models/common.hpp"
+#include <glaze/glaze.hpp>
+#include <glaze/json/generic.hpp>
+#include <string_view>
+#include <utility>
 
-#include <nlohmann/json.hpp>
+#include "glaze_detail.hpp"
 
 namespace nws {
 
-void from_json(const nlohmann::json& j, StationProperties& p) {
-	p.id = json_string(j, "@id");
-	p.station_identifier = json_string(j, "stationIdentifier");
-	p.name = json_string(j, "name");
-	p.time_zone = json_string(j, "timeZone");
-	p.forecast_url = json_string(j, "forecast");
-	p.county_url = json_string(j, "county");
-	p.fire_weather_zone_url = json_string(j, "fireWeatherZone");
+namespace {
 
-	if (j.contains("elevation") && !j["elevation"].is_null()) {
-		from_json(j["elevation"], p.elevation);
+void populate_station_properties(const glz::generic& props, StationProperties& p) {
+	p.id = detail::get_string(props, "@id");
+	p.station_identifier = detail::get_string(props, "stationIdentifier");
+	p.name = detail::get_string(props, "name");
+	p.time_zone = detail::get_string(props, "timeZone");
+	p.forecast_url = detail::get_string(props, "forecast");
+	p.county_url = detail::get_string(props, "county");
+	p.fire_weather_zone_url = detail::get_string(props, "fireWeatherZone");
+
+	const glz::generic* elev = detail::find_object(props, "elevation");
+	if (elev != nullptr) {
+		detail::parse_quantitative_value(*elev, p.elevation);
 	}
 }
 
-void from_json(const nlohmann::json& j, StationResponse& r) {
-	r.id = json_string(j, "id");
-	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>() : "Feature";
+void populate_station_response(const glz::generic& root, StationResponse& r) {
+	r.id = detail::get_string(root, "id");
+	std::string type = detail::get_string(root, "type");
+	r.type = type.empty() ? "Feature" : std::move(type);
 
-	if (j.contains("geometry") && !j["geometry"].is_null()) {
-		GeoPoint gp;
-		from_json(j["geometry"], gp);
-		r.geometry = gp;
+	const glz::generic* geom = detail::find_object(root, "geometry");
+	if (geom != nullptr) {
+		r.geometry = detail::parse_geometry(*geom);
 	}
 
-	if (j.contains("properties") && !j["properties"].is_null()) {
-		from_json(j["properties"], r.properties);
+	const glz::generic* props = detail::find_object(root, "properties");
+	if (props != nullptr) {
+		populate_station_properties(*props, r.properties);
 	}
 }
 
-void from_json(const nlohmann::json& j, StationCollectionResponse& r) {
-	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>()
-														 : "FeatureCollection";
-	if (j.contains("features") && j["features"].is_array()) {
-		for (const auto& feat : j["features"]) {
-			StationResponse station;
-			from_json(feat, station);
-			r.features.push_back(std::move(station));
-		}
+} // namespace
+
+Result<void> deserialize_station_response(std::string_view body, StationResponse& out) {
+	Result<glz::generic> root = detail::parse_root(body);
+	if (!root) {
+		return std::unexpected(root.error());
 	}
+	populate_station_response(*root, out);
+	return {};
+}
+
+Result<void> deserialize_station_collection(std::string_view body, StationCollectionResponse& out) {
+	Result<glz::generic> root = detail::parse_root(body);
+	if (!root) {
+		return std::unexpected(root.error());
+	}
+
+	std::string type = detail::get_string(*root, "type");
+	out.type = type.empty() ? "FeatureCollection" : std::move(type);
+
+	const glz::generic* features = detail::find_array(*root, "features");
+	if (features == nullptr) {
+		return {};
+	}
+	const glz::generic::array_t& arr = features->get_array();
+	out.features.reserve(arr.size());
+	for (const glz::generic& feat : arr) {
+		StationResponse station;
+		populate_station_response(feat, station);
+		out.features.push_back(std::move(station));
+	}
+
+	return {};
 }
 
 } // namespace nws

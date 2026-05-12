@@ -6,6 +6,31 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Build
+
+- **JSON: nlohmann/json → Glaze v7.6.0**. Compile-time-reflection JSON
+  library; ~3.4x parse speedup on the gridpoint-forecast hot path
+  (~700 us/op nlohmann → ~205 us/op Glaze steady-state on a ~43 KB
+  representative payload, 14 of the 60+ NWS gridpoint layers, GCC 13.3
+  on x86_64-v3). The migration replaces every `from_json(const
+  nlohmann::json&, T&)` overload with a `deserialize_*(std::string_view,
+  T&)` family that returns `Result<void>`. Public `NWSClient::get_*`
+  signatures are unchanged; only the internal model surface moved.
+- Hand-walk strategy via `glz::generic`: the NWS payload mixes JSON-LD
+  keys (`@id`, `@type`), polymorphic GeoJSON geometry variants (Point /
+  Polygon / null), and mixed-shape fields (`ForecastPeriod.windSpeed`
+  is sometimes a string and sometimes a QuantitativeValue object).
+  These don't map cleanly onto a static `glz::meta`, so the migration
+  parses each body once into a `glz::generic` AST and walks it via a
+  small set of `detail::get_*` null-safe extractors in
+  `src/models/glaze_detail.hpp` (not installed, not part of the public
+  ABI).
+- `tests/parse_benchmark.cpp` added — 1k-iteration regression guard on
+  a synthetic gridpoint-forecast payload, wired into `ctest --timeout`.
+- `tests/glaze_test.cpp` added — covers the migration's per-model parse
+  behaviour (variant geometry, dynamic-key AlertActiveCount maps, mixed
+  windSpeed shape, null-tolerant cloudLayers, etc.).
+
 ## [0.1.1] - 2026-05-10
 
 ### CI

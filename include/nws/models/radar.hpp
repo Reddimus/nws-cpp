@@ -1,11 +1,12 @@
 #pragma once
 
+#include "nws/error.hpp"
 #include "nws/geo.hpp"
 #include "nws/units.hpp"
 
-#include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace nws {
@@ -29,9 +30,11 @@ struct RadarServerProperties {
 	std::string host;
 };
 
-void from_json(const nlohmann::json& j, RadarStationProperties& p);
-void from_json(const nlohmann::json& j, RadarStationFeature& r);
-void from_json(const nlohmann::json& j, RadarStationCollectionResponse& r);
-void from_json(const nlohmann::json& j, RadarServerProperties& p);
+[[nodiscard]] Result<void> deserialize_radar_station_feature(std::string_view body,
+															 RadarStationFeature& out);
+[[nodiscard]] Result<void>
+deserialize_radar_station_collection(std::string_view body, RadarStationCollectionResponse& out);
+[[nodiscard]] Result<void> deserialize_radar_server_properties(std::string_view body,
+															   RadarServerProperties& out);
 
 } // namespace nws

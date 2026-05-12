@@ -1,12 +1,13 @@
 #pragma once
 
+#include "nws/error.hpp"
 #include "nws/geo.hpp"
 
 #include <cstdint>
 #include <map>
-#include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace nws {
@@ -69,9 +70,10 @@ struct AlertActiveCount {
 	std::map<std::string, std::int32_t> zones;
 };
 
-void from_json(const nlohmann::json& j, AlertProperties& p);
-void from_json(const nlohmann::json& j, AlertFeature& r);
-void from_json(const nlohmann::json& j, AlertCollectionResponse& r);
-void from_json(const nlohmann::json& j, AlertActiveCount& c);
+[[nodiscard]] Result<void> deserialize_alert_feature(std::string_view body, AlertFeature& out);
+[[nodiscard]] Result<void> deserialize_alert_collection(std::string_view body,
+														AlertCollectionResponse& out);
+[[nodiscard]] Result<void> deserialize_alert_active_count(std::string_view body,
+														  AlertActiveCount& out);
 
 } // namespace nws

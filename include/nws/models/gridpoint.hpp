@@ -1,12 +1,13 @@
 #pragma once
 
+#include "nws/error.hpp"
 #include "nws/geo.hpp"
 #include "nws/units.hpp"
 
 #include <cstdint>
-#include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace nws {
@@ -57,9 +58,7 @@ struct GridpointProperties {
 
 using GridpointResponse = GeoJsonFeature<GridpointProperties>;
 
-void from_json(const nlohmann::json& j, GridpointTimeValue& tv);
-void from_json(const nlohmann::json& j, GridpointLayer& layer);
-void from_json(const nlohmann::json& j, GridpointProperties& p);
-void from_json(const nlohmann::json& j, GridpointResponse& r);
+[[nodiscard]] Result<void> deserialize_gridpoint_response(std::string_view body,
+														  GridpointResponse& out);
 
 } // namespace nws

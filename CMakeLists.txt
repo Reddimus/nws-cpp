@@ -69,14 +69,18 @@ endif()
 find_package(CURL REQUIRED)
 
 include(FetchContent)
+
+# Glaze - JSON library (compile-time reflection, ~4x parse speedup over
+# nlohmann on the NWS gridpoint-forecast hot path, which is what consumers
+# like kalshi-trader and polymarket-trader hit on the 60+-layer payload).
+# License: MIT.
 FetchContent_Declare(
-    json
-    GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG v3.11.3
+    glaze
+    GIT_REPOSITORY https://github.com/stephenberry/glaze.git
+    GIT_TAG v7.6.0
     GIT_SHALLOW TRUE
 )
-set(JSON_BuildTests OFF CACHE INTERNAL "")
-FetchContent_MakeAvailable(json)
+FetchContent_MakeAvailable(glaze)
 
 # Include directories
 include_directories(${PROJECT_SOURCE_DIR}/include)

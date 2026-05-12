@@ -1,68 +1,115 @@
+// Copyright (c) 2026 PredictionMarketsAI
+// SPDX-License-Identifier: MIT
+
 #include "nws/models/radar.hpp"
 
-#include "nws/models/common.hpp"
+#include <glaze/glaze.hpp>
+#include <glaze/json/generic.hpp>
+#include <string_view>
+#include <utility>
+#include <variant>
 
-#include <nlohmann/json.hpp>
+#include "glaze_detail.hpp"
 
 namespace nws {
 
-void from_json(const nlohmann::json& j, RadarStationProperties& p) {
-	p.id = json_string(j, "id");
-	p.name = json_string(j, "name");
-	p.station_type = json_string(j, "stationType");
+namespace {
 
-	// Coordinates may come from GeoJSON geometry or inline fields
-	if (j.contains("latitude") && !j["latitude"].is_null()) {
-		p.latitude = j["latitude"].get<double>();
+void populate_radar_station_properties(const glz::generic& props, RadarStationProperties& p) {
+	p.id = detail::get_string(props, "id");
+	p.name = detail::get_string(props, "name");
+	p.station_type = detail::get_string(props, "stationType");
+
+	// Inline coordinates take precedence over GeoJSON geometry, matching
+	// the pre-migration order of operations.
+	std::optional<double> lat = detail::get_optional_double(props, "latitude");
+	std::optional<double> lon = detail::get_optional_double(props, "longitude");
+	if (lat) {
+		p.latitude = *lat;
 	}
-	if (j.contains("longitude") && !j["longitude"].is_null()) {
-		p.longitude = j["longitude"].get<double>();
+	if (lon) {
+		p.longitude = *lon;
 	}
 
-	if (j.contains("elevation") && !j["elevation"].is_null()) {
-		from_json(j["elevation"], p.elevation);
+	const glz::generic* elev = detail::find_object(props, "elevation");
+	if (elev != nullptr) {
+		detail::parse_quantitative_value(*elev, p.elevation);
 	}
 }
 
-void from_json(const nlohmann::json& j, RadarStationFeature& r) {
-	r.id = json_string(j, "id");
-	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>() : "Feature";
+void populate_radar_station_feature(const glz::generic& root, RadarStationFeature& r) {
+	r.id = detail::get_string(root, "id");
+	std::string type = detail::get_string(root, "type");
+	r.type = type.empty() ? "Feature" : std::move(type);
 
-	if (j.contains("geometry") && !j["geometry"].is_null()) {
-		GeoPoint gp;
-		from_json(j["geometry"], gp);
-		r.geometry = gp;
+	const glz::generic* geom = detail::find_object(root, "geometry");
+	const glz::generic* props = detail::find_object(root, "properties");
 
-		// Populate lat/lon from geometry if properties don't have them
-		if (j.contains("properties") && !j["properties"].is_null()) {
-			const nlohmann::json& props = j["properties"];
-			if (!props.contains("latitude") || props["latitude"].is_null()) {
-				r.properties.latitude = gp.latitude;
-				r.properties.longitude = gp.longitude;
-			}
+	if (geom != nullptr) {
+		r.geometry = detail::parse_geometry(*geom);
+	}
+
+	if (props != nullptr) {
+		populate_radar_station_properties(*props, r.properties);
+	}
+
+	// If the properties block didn't supply lat/lon, fall back to the
+	// geometry's Point coordinates. This mirrors the pre-migration logic
+	// that landed lat/lon onto the properties struct as a convenience.
+	if (props != nullptr && std::holds_alternative<GeoPoint>(r.geometry)) {
+		const bool no_inline_lat = detail::get_optional_double(*props, "latitude") == std::nullopt;
+		if (no_inline_lat) {
+			const GeoPoint& gp = std::get<GeoPoint>(r.geometry);
+			r.properties.latitude = gp.latitude;
+			r.properties.longitude = gp.longitude;
 		}
 	}
-
-	if (j.contains("properties") && !j["properties"].is_null()) {
-		from_json(j["properties"], r.properties);
-	}
 }
 
-void from_json(const nlohmann::json& j, RadarStationCollectionResponse& r) {
-	r.type = j.contains("type") && j["type"].is_string() ? j["type"].get<std::string>()
-														 : "FeatureCollection";
-	if (j.contains("features") && j["features"].is_array()) {
-		for (const auto& feat : j["features"]) {
-			RadarStationFeature station;
-			from_json(feat, station);
-			r.features.push_back(std::move(station));
-		}
+} // namespace
+
+Result<void> deserialize_radar_station_feature(std::string_view body, RadarStationFeature& out) {
+	Result<glz::generic> root = detail::parse_root(body);
+	if (!root) {
+		return std::unexpected(root.error());
 	}
+	populate_radar_station_feature(*root, out);
+	return {};
 }
 
-void from_json(const nlohmann::json& j, RadarServerProperties& p) {
-	p.id = json_string(j, "id");
-	p.host = json_string(j, "host");
+Result<void> deserialize_radar_station_collection(std::string_view body,
+												  RadarStationCollectionResponse& out) {
+	Result<glz::generic> root = detail::parse_root(body);
+	if (!root) {
+		return std::unexpected(root.error());
+	}
+
+	std::string type = detail::get_string(*root, "type");
+	out.type = type.empty() ? "FeatureCollection" : std::move(type);
+
+	const glz::generic* features = detail::find_array(*root, "features");
+	if (features == nullptr) {
+		return {};
+	}
+	const glz::generic::array_t& arr = features->get_array();
+	out.features.reserve(arr.size());
+	for (const glz::generic& feat : arr) {
+		RadarStationFeature station;
+		populate_radar_station_feature(feat, station);
+		out.features.push_back(std::move(station));
+	}
+	return {};
+}
+
+Result<void> deserialize_radar_server_properties(std::string_view body,
+												 RadarServerProperties& out) {
+	Result<glz::generic> root = detail::parse_root(body);
+	if (!root) {
+		return std::unexpected(root.error());
+	}
+	out.id = detail::get_string(*root, "id");
+	out.host = detail::get_string(*root, "host");
+	return {};
 }
 
 } // namespace nws
