@@ -22,7 +22,7 @@ int main() {
 
 	std::cout << "Forecast generated: " << forecast->properties.generated_at << "\n\n";
 
-	for (const auto& period : forecast->properties.periods) {
+	for (const nws::ForecastPeriod& period : forecast->properties.periods) {
 		std::cout << period.name << ": " << period.temperature << period.temperature_unit << "\n";
 		std::cout << "  Wind: " << period.wind_speed << " " << period.wind_direction << "\n";
 		std::cout << "  " << period.short_forecast << "\n";

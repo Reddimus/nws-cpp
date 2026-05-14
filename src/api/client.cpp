@@ -53,7 +53,7 @@ void append_param(std::string& query, bool& has_params, const std::string& key,
 
 void append_vector_param(std::string& query, bool& has_params, const std::string& key,
 						 const std::vector<std::string>& values) {
-	for (const auto& v : values) {
+	for (const std::string& v : values) {
 		append_param(query, has_params, key, v);
 	}
 }
