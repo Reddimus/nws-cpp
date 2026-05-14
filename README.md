@@ -99,7 +99,7 @@ target_link_libraries(myapp PRIVATE nws)
 graph LR
     nws_core["nws_core<br/><small>error, rate_limit, retry, units</small>"]
     nws_http["nws_http<br/><small>libcurl HTTP client</small>"]
-    nws_models["nws_models<br/><small>13 GeoJSON models<br/>+ from_json parsers</small>"]
+    nws_models["nws_models<br/><small>13 GeoJSON models<br/>+ Glaze deserialize_* parsers</small>"]
     nws_api["nws_api<br/><small>NWSClient<br/>all endpoints</small>"]
     nws["nws<br/><small>INTERFACE</small>"]
 
@@ -131,7 +131,7 @@ graph LR
 | `get_forecast_for_location(lat, lon)` | Auto-resolves point -> grid -> forecast |
 | `get_current_weather(lat, lon)` | Auto-resolves point -> station -> latest observation |
 
-### Model Types (all with typed from_json parsers)
+### Model Types (all with typed `deserialize_*(std::string_view, T&) -> Result<void>` parsers)
 
 Point, Forecast, Observation, Station, Alert, Zone, Gridpoint, Office, Product, Aviation (SIGMET/CWA), Radar, Glossary
 
@@ -168,7 +168,7 @@ make run-weather_monitor   # Polling station every 60s
 | Library | Purpose | Integration |
 |---------|---------|-------------|
 | libcurl | HTTP requests | `find_package(CURL)` |
-| nlohmann/json | JSON parsing | `FetchContent` |
+| [Glaze](https://github.com/stephenberry/glaze) v7.6.0 | JSON parsing (compile-time reflection, ~3.4x faster than the pre-migration nlohmann path on gridpoint forecasts) | `FetchContent` |
 | GoogleTest | Unit testing | `FetchContent` |
 
 ## References
