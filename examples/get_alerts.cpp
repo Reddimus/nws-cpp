@@ -17,7 +17,7 @@ int main() {
 
 	std::cout << "Active alerts for Kansas: " << alerts->features.size() << "\n\n";
 
-	for (const auto& alert : alerts->features) {
+	for (const nws::AlertFeature& alert : alerts->features) {
 		const nws::AlertProperties& p = alert.properties;
 		std::cout << "Event: " << p.event << "\n";
 		std::cout << "Severity: " << nws::to_string(p.severity) << "\n";
