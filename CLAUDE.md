@@ -28,3 +28,7 @@ make clean          # Remove build/
 - Null-safety: all `detail::get_*` helpers in `src/models/glaze_detail.hpp` treat missing / null / type-mismatched JSON values as default-constructed output. Use those instead of inlining `glz::generic` lookups so the per-field error-handling stays uniform.
 - Models declare `deserialize_*(std::string_view, T&)` in headers, implement in `.cpp` files. The previous `from_json(const nlohmann::json&, T&)` overloads have been removed.
 - Include order: project headers first, then system headers (enforced by clang-format)
+
+## CI
+
+GitHub Actions workflow `.github/workflows/ci.yml`: build + test + lint on Ubuntu 24.04, build + test + lint on macos-latest, build + test on windows-latest (no clang-format step — Windows toolchain lacks a uniform clang-format), markdown-lint via DavidAnson. Release workflow auto-creates a GitHub Release on `vX.Y.Z` tag push (notes extracted from `CHANGELOG.md`).
