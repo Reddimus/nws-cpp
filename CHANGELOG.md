@@ -6,6 +6,29 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `.editorconfig` (fleet-standard: tabs, 4-width, LF, UTF-8, 100-col
+  max for C++). Sibling to `.clang-format`; covers editors that don't
+  read `.clang-format` (#12).
+- `make pre-commit` + `make install-hooks` targets — auto-format + lint
+  via git pre-commit hook (#7).
+
+### Changed
+
+- README FetchContent snippet pinned to v0.2.0 (#8).
+- `cpp_auto_audit` allowlist emptied (16 entries → 0); all production
+  code now uses explicit types per the `no auto` rule (#9).
+
+### Removed
+
+- All stale `nlohmann/from_json` claims from README (the Glaze
+  migration shipped in v0.2.0 made these obsolete) (#11).
+
+### Fixed
+
+- LICENSE: copyright holder de-truncated (#10).
+
 ## [0.2.0] - 2026-05-12
 
 ### Build
