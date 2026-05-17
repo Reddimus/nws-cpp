@@ -6,8 +6,21 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-17
+
 ### Added
 
+- **CLI/CF6 settlement + NBP probabilistic parsing.** Daily-temperature
+  contracts settle on the NWS Daily Climate Report (CLI) / F6 (CF6), not
+  raw ASOS or NCEI-final. New `nws/models/cli_report.hpp`:
+  `parse_cli_product_text()` (the authoritative api.weather.gov product
+  text) and `parse_iem_cli_json()` (Iowa Environmental Mesonet's fast
+  bulk `json/cli.py`). New `nws/models/nbp_bulletin.hpp`
+  `parse_nbp_bulletin()` for the NBM probabilistic text bulletin
+  (`TXNP1..9` percentiles + `TXNSD`), no GRIB needed. New client methods
+  `get_latest_product(type, location)` (one-shot
+  `/products/types/{type}/locations/{loc}/latest`, SCN 25-44) and
+  `get_product(id)`. Consumed by nws-data's CLI/CF6 + NBM ingestion.
 - `.editorconfig` (fleet-standard: tabs, 4-width, LF, UTF-8, 100-col
   max for C++). Sibling to `.clang-format`; covers editors that don't
   read `.clang-format` (#12).
@@ -134,7 +147,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Mermaid architecture diagram + API references in README
 - 137 unit tests via GoogleTest (FetchContent)
 
-[Unreleased]: https://github.com/Reddimus/nws-cpp/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Reddimus/nws-cpp/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Reddimus/nws-cpp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Reddimus/nws-cpp/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Reddimus/nws-cpp/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Reddimus/nws-cpp/releases/tag/v0.1.0
