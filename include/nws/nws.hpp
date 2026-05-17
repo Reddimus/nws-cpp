@@ -18,10 +18,12 @@
 // Models
 #include "nws/models/alert.hpp"
 #include "nws/models/aviation.hpp"
+#include "nws/models/cli_report.hpp"
 #include "nws/models/common.hpp"
 #include "nws/models/forecast.hpp"
 #include "nws/models/glossary.hpp"
 #include "nws/models/gridpoint.hpp"
+#include "nws/models/nbp_bulletin.hpp"
 #include "nws/models/observation.hpp"
 #include "nws/models/office.hpp"
 #include "nws/models/point.hpp"

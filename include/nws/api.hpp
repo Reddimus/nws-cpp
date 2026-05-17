@@ -12,6 +12,7 @@
 #include "nws/models/gridpoint.hpp"
 #include "nws/models/observation.hpp"
 #include "nws/models/point.hpp"
+#include "nws/models/product.hpp"
 #include "nws/models/station.hpp"
 #include "nws/models/zone.hpp"
 #include "nws/pagination.hpp"
@@ -184,6 +185,18 @@ public:
 
 	/// Get glossary of weather terms
 	[[nodiscard]] Result<GlossaryResponse> get_glossary();
+
+	// ===== Products API (CLI/CF6 settlement source) =====
+
+	/// Latest text product of `type_id` issued for `location_id` — the
+	/// one-shot /products/types/{type}/locations/{loc}/latest endpoint
+	/// (SCN 25-44). Use type "CLI"/"CF6" + a CLI site id to pull the
+	/// authoritative daily-temperature settlement product.
+	[[nodiscard]] Result<ProductProperties> get_latest_product(const std::string& type_id,
+															   const std::string& location_id);
+
+	/// Fetch a specific text product by its product id (/products/{id}).
+	[[nodiscard]] Result<ProductProperties> get_product(const std::string& product_id);
 
 	// ===== Convenience Methods =====
 

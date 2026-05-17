@@ -504,4 +504,34 @@ Result<ObservationResponse> NWSClient::get_current_weather(double latitude, doub
 	return get_latest_observation(nearest.properties.station_identifier);
 }
 
+// ===== Products API =====
+
+Result<ProductProperties> NWSClient::get_latest_product(const std::string& type_id,
+														const std::string& location_id) {
+	Result<std::string> body = body_or_error(
+		do_get("/products/types/" + type_id + "/locations/" + location_id + "/latest"));
+	if (!body) {
+		return std::unexpected(body.error());
+	}
+	ProductProperties response;
+	Result<void> parse = deserialize_product_properties(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
+	}
+	return response;
+}
+
+Result<ProductProperties> NWSClient::get_product(const std::string& product_id) {
+	Result<std::string> body = body_or_error(do_get("/products/" + product_id));
+	if (!body) {
+		return std::unexpected(body.error());
+	}
+	ProductProperties response;
+	Result<void> parse = deserialize_product_properties(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
+	}
+	return response;
+}
+
 } // namespace nws

@@ -40,6 +40,8 @@ add_library(nws_models STATIC
     models/zone.cpp
     models/office.cpp
     models/product.cpp
+    models/cli_report.cpp
+    models/nbp_bulletin.cpp
     models/aviation.cpp
     models/radar.cpp
     models/glossary.cpp

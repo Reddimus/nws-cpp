@@ -4,6 +4,7 @@ add_executable(nws_tests
     test_rate_limit.cpp
     test_retry.cpp
     test_models.cpp
+    test_product.cpp
     test_pagination.cpp
     test_cache.cpp
     test_api.cpp
