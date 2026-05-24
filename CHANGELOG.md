@@ -6,6 +6,24 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-05-24
+
+### Fixed
+
+- **`parse_cli_product_text` now recognises CF6 (Preliminary Local
+  Climatological Data, WS Form F-6) products.** The previous keyword
+  parser only matched CLI's `MAXIMUM`/`MINIMUM` labels and fell through
+  to `unrecognized CLI/CF6 product layout` on every CF6 input — the
+  consumer nws-data ingester silently produced 0 rows with
+  `source='nws_api_cf6'` in production. CF6 routing now triggers on the
+  `WS FORM: F-6` banner and parses the fixed-width tabular layout (`DY
+  MAX MIN AVG …`), extracting station from the `CF6XXX` header line,
+  month/year from the metadata block, and returning the most recent day
+  with both tmax and tmin populated. Treats `M` (missing) and `T`
+  (trace) tokens as `nullopt`. Stops on `SM`/`AV`/`NOTES`/`$$` summary
+  rows. New test `CliReport.ParsesCf6Product` against a representative
+  CF6ATL fixture verifies the date/temp/source/station outputs.
+
 ## [0.3.0] - 2026-05-17
 
 ### Added
