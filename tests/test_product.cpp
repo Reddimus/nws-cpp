@@ -53,6 +53,50 @@ TEST(CliReport, RejectsEmpty) {
 	EXPECT_FALSE(parse_cli_product_text("").has_value());
 }
 
+// CF6 sample modelled on the live `api.weather.gov` `CF6ATL` product format
+// (May 2026). Verifies the fixed-width tabular parser branch.
+constexpr const char* kCf6 =
+	"\n000\n"
+	"CXUS52 KFFC 241010\n"
+	"CF6ATL\n"
+	"PRELIMINARY LOCAL CLIMATOLOGICAL DATA (WS FORM: F-6)\n"
+	"\n"
+	"                                          STATION:   ATLANTA\n"
+	"                                          MONTH:     MAY\n"
+	"                                          YEAR:      2026\n"
+	"                                          LATITUDE:   33 39 N      \n"
+	"                                          LONGITUDE:  84 26 W    \n"
+	"\n"
+	"  TEMPERATURE IN F:       :PCPN:    SNOW:  WIND      :SUNSHINE: SKY     :PK WND \n"
+	"================================================================================\n"
+	"1   2   3   4   5  6A  6B    7    8   9   10  11  12  13   14  15   16   17  18\n"
+	"                                     12Z  AVG MX 2MIN\n"
+	"DY MAX MIN AVG DEP HDD CDD  WTR  SNW DPTH SPD SPD DIR MIN PSBL S-S WX    SPD DR\n"
+	"================================================================================\n"
+	"\n"
+	" 1  66  57  62  -5   3   0    T  0.0    0  5.6 12  50   M    M  10        15  70\n"
+	" 2  72  53  63  -5   2   0 0.01  0.0    0  9.3 26 310   M    M   6        37 320\n"
+	"22  88  70  79   6   0  14 0.05  0.0    M  8.9 22 220   M    M   9 3      30 220\n"
+	"23  85  69  77   4   0  12 0.43  0.0    0  8.5 17  80   M    M   9 13     22 100\n"
+	"================================================================================\n"
+	"SM 1848 1400        12 147  1.01  0.0    172.1          M      134              \n"
+	"================================================================================\n";
+
+TEST(CliReport, ParsesCf6Product) {
+	Result<CliReport> r = parse_cli_product_text(kCf6);
+	ASSERT_TRUE(r.has_value()) << r.error().message;
+	// CF6 sample's most-recent populated day is May 23, 2026 — high 85, low 69.
+	EXPECT_EQ(r->date, "2026-05-23");
+	ASSERT_TRUE(r->tmax_f.has_value());
+	ASSERT_TRUE(r->tmin_f.has_value());
+	EXPECT_DOUBLE_EQ(*r->tmax_f, 85.0);
+	EXPECT_DOUBLE_EQ(*r->tmin_f, 69.0);
+	EXPECT_EQ(r->source, "nws_api_cf6");
+	EXPECT_TRUE(r->is_preliminary); // sample carries the PRELIMINARY banner
+	EXPECT_FALSE(r->is_corrected);
+	EXPECT_EQ(r->station, "KATL"); // 3-letter ATL + K prefix
+}
+
 TEST(CliReport, ParsesIemJson) {
 	const std::string json = R"({"results":[)"
 							 R"({"station":"KNYC","valid":"2026-05-16","high":72,"low":55},)"

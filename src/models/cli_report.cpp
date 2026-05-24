@@ -110,9 +110,173 @@ int month_num(std::string_view line) {
 
 } // namespace
 
+namespace {
+
+/// Parse the fixed-width tabular CF6 (Preliminary Local Climatological Data,
+/// WS Form F-6) layout. CF6 differs from CLI by carrying a full month of
+/// daily rows; we return the most recent day with both tmax and tmin present.
+/// CF6 sample row: " 1  66  57  62  -5   3   0    T  0.0 ..."
+/// columns: DY MAX MIN AVG DEP HDD CDD WTR SNW ...
+Result<CliReport> parse_cf6_product_text(std::string_view product_text) {
+	CliReport r;
+	r.source = "nws_api_cf6";
+	r.is_preliminary = icontains(product_text, "PRELIMINARY");
+	r.is_corrected = icontains(product_text, "CORRECTED") || icontains(product_text, "...COR");
+
+	int month = 0;
+	int year = 0;
+	std::string station_3letter;
+	bool past_data_header = false;
+	int best_day = 0;
+	std::optional<double> best_tmax;
+	std::optional<double> best_tmin;
+
+	const std::vector<std::string_view> ls = lines_of(product_text);
+	for (std::string_view ln : ls) {
+		// "CF6ATL" -> station_3letter = "ATL"
+		if (station_3letter.empty()) {
+			std::size_t cf6_pos = ln.find("CF6");
+			if (cf6_pos != std::string_view::npos && cf6_pos + 6 <= ln.size()) {
+				std::string_view cand = ln.substr(cf6_pos + 3, 3);
+				bool valid = cand.size() == 3;
+				for (char c : cand) {
+					if (!std::isupper(static_cast<unsigned char>(c))) {
+						valid = false;
+						break;
+					}
+				}
+				if (valid) {
+					station_3letter = std::string(cand);
+				}
+			}
+		}
+
+		if (month == 0 && icontains(ln, "MONTH:")) {
+			const int m = month_num(ln);
+			if (m != 0) {
+				month = m;
+			}
+		}
+
+		if (year == 0 && icontains(ln, "YEAR:")) {
+			std::size_t p = 0;
+			while (p < ln.size()) {
+				while (p < ln.size() && !std::isdigit(static_cast<unsigned char>(ln[p]))) {
+					++p;
+				}
+				std::size_t q = p;
+				while (q < ln.size() && std::isdigit(static_cast<unsigned char>(ln[q]))) {
+					++q;
+				}
+				if (q > p) {
+					int v = 0;
+					std::from_chars(ln.data() + p, ln.data() + q, v);
+					if (v >= 1900 && v <= 2200) {
+						year = v;
+						break;
+					}
+				}
+				p = q + 1;
+			}
+		}
+
+		// Data header line carries both "DY" near start and "MAX" + "MIN" elsewhere.
+		if (!past_data_header) {
+			const std::size_t dy = ln.find("DY");
+			if (dy != std::string_view::npos && dy < 5 &&
+				ln.find("MAX") != std::string_view::npos &&
+				ln.find("MIN") != std::string_view::npos) {
+				past_data_header = true;
+				continue;
+			}
+		} else {
+			// Trim leading whitespace + skip blanks / separators.
+			std::size_t s = 0;
+			while (s < ln.size() && std::isspace(static_cast<unsigned char>(ln[s]))) {
+				++s;
+			}
+			if (s >= ln.size() || ln[s] == '=') {
+				continue;
+			}
+			// Stop on summary rows ("SM ...", "AV ...", "NOTES:", "$$").
+			std::string_view body = ln.substr(s);
+			if (body.starts_with("SM ") || body.starts_with("AV ") || body.starts_with("NOTES") ||
+				body.starts_with("$$") || body.starts_with("MAX(") || body.starts_with("MISC")) {
+				break;
+			}
+			// Tokenize whitespace-separated columns.
+			std::vector<std::string_view> toks;
+			std::size_t i = s;
+			while (i < ln.size()) {
+				while (i < ln.size() && std::isspace(static_cast<unsigned char>(ln[i]))) {
+					++i;
+				}
+				std::size_t j = i;
+				while (j < ln.size() && !std::isspace(static_cast<unsigned char>(ln[j]))) {
+					++j;
+				}
+				if (j > i) {
+					toks.push_back(ln.substr(i, j - i));
+				}
+				i = j;
+			}
+			if (toks.size() < 3) {
+				continue;
+			}
+			// Token 0 must be a day (1..31).
+			int day = 0;
+			if (std::from_chars(toks[0].data(), toks[0].data() + toks[0].size(), day).ec !=
+					std::errc{} ||
+				day < 1 || day > 31) {
+				continue;
+			}
+			// Tokens 1 and 2 = MAX, MIN. "M" means missing.
+			auto parse_temp = [](std::string_view t) -> std::optional<double> {
+				if (t == "M" || t == "T") {
+					return std::nullopt;
+				}
+				int v = 0;
+				if (std::from_chars(t.data(), t.data() + t.size(), v).ec != std::errc{}) {
+					return std::nullopt;
+				}
+				return static_cast<double>(v);
+			};
+			const std::optional<double> tmax = parse_temp(toks[1]);
+			const std::optional<double> tmin = parse_temp(toks[2]);
+			if (tmax.has_value() && tmin.has_value() && day > best_day) {
+				best_day = day;
+				best_tmax = tmax;
+				best_tmin = tmin;
+			}
+		}
+	}
+
+	if (month == 0 || year == 0 || best_day == 0) {
+		return std::unexpected(Error::parse("unrecognized CLI/CF6 product layout"));
+	}
+	char buf[11];
+	std::snprintf(buf, sizeof(buf), "%04d-%02d-%02d", year, month, best_day);
+	r.date = buf;
+	if (!station_3letter.empty()) {
+		r.station = "K" + station_3letter; // CONUS K-prefix
+	}
+	r.tmax_f = best_tmax;
+	r.tmin_f = best_tmin;
+	return r;
+}
+
+} // namespace
+
 Result<CliReport> parse_cli_product_text(std::string_view product_text) {
 	if (product_text.empty()) {
 		return std::unexpected(Error::parse("empty CLI product text"));
+	}
+	// CF6 (PRELIMINARY LOCAL CLIMATOLOGICAL DATA, WS Form F-6) uses a fixed-
+	// width tabular format that the CLI keyword parser below cannot read.
+	// Detect on the F-6 banner and route to the CF6-specific parser.
+	if (icontains(product_text, "WS FORM: F-6") || icontains(product_text, "WS FORM F-6") ||
+		icontains(product_text, "WS FORM:  F-6")) {
+		return parse_cf6_product_text(product_text);
 	}
 	CliReport r;
 	r.source = "nws_api_cli";
