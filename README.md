@@ -87,7 +87,7 @@ Or with FetchContent:
 ```cmake
 FetchContent_Declare(nws-cpp
     GIT_REPOSITORY https://github.com/Reddimus/nws-cpp.git
-    GIT_TAG v0.3.0  # pin a tagged release
+    GIT_TAG v0.3.1  # pin a tagged release
 )
 FetchContent_MakeAvailable(nws-cpp)
 target_link_libraries(myapp PRIVATE nws)
