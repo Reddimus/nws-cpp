@@ -47,6 +47,26 @@ TEST(GlazeDeserializerTest, RejectsInvalidJson) {
 	EXPECT_FALSE(r.has_value());
 }
 
+TEST(GlazeDeserializerTest, GetIntFallsBackOnOutOfRangeNumber) {
+	// Regression: detail::get_int() cast a JSON double straight to int32_t with
+	// no bounds check — undefined behavior [conv.fpint] for magnitudes beyond
+	// int32 range (and for NaN). The defensive helper must fall back to the
+	// default (0) for such malformed values, not invoke UB.
+	const std::string body = R"({
+		"type": "Feature",
+		"geometry": {
+			"type": "Polygon",
+			"coordinates": [[[-97.11, 39.72], [-97.10, 39.73], [-97.11, 39.72]]]
+		},
+		"properties": {"gridId": "TOP", "gridX": 1e300, "gridY": -1e300}
+	})";
+	PointResponse resp;
+	Result<void> r = deserialize_point_response(body, resp);
+	ASSERT_TRUE(r.has_value());
+	EXPECT_EQ(resp.properties.grid_x, 0);
+	EXPECT_EQ(resp.properties.grid_y, 0);
+}
+
 // ===== Point + GeoJSON geometry variant =====
 
 TEST(GlazeDeserializerTest, PointResponseWithPolygonGeometry) {
