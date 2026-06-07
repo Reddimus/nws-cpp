@@ -47,7 +47,15 @@ std::int32_t get_int(const glz::generic& obj, const char* key, std::int32_t def)
 	if (v == nullptr || !v->is_number()) {
 		return def;
 	}
-	return static_cast<std::int32_t>(v->get<double>());
+	// Bounds-check before the narrowing cast: a double whose truncated value
+	// is not representable in int32_t is undefined behavior [conv.fpint], and
+	// NaN likewise. Well-formed api.weather.gov payloads never exceed int32
+	// range, but this helper is the defensive layer for malformed/hostile JSON.
+	const double dval = v->get<double>();
+	if (!(dval >= -2147483648.0) || dval > 2147483647.0) { // !(>=) also rejects NaN
+		return def;
+	}
+	return static_cast<std::int32_t>(dval);
 }
 
 std::optional<double> get_optional_double(const glz::generic& obj, const char* key) {
