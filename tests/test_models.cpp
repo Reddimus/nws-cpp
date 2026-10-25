@@ -310,3 +310,25 @@ TEST(GeoPointTest, FromPointResponseGeometry) {
 
 } // namespace
 } // namespace nws
+
+TEST(ForecastValidation, KeepsFractionalAndLargeQuantitativeWindSpeeds) {
+	for (const std::string& value : {std::string("12.5"), std::string("1e100")}) {
+		nws::ForecastResponse forecast;
+		const std::string body =
+			"{\"properties\":{\"periods\":[{\"windSpeed\":{\"value\":" + value +
+			",\"unitCode\":\"wmoUnit:km_h-1\"}}]}}";
+		ASSERT_TRUE(nws::deserialize_forecast_response(body, forecast).has_value());
+		ASSERT_EQ(forecast.properties.periods.size(), 1u);
+		EXPECT_EQ(forecast.properties.periods[0].wind_speed,
+				  value == "12.5" ? "12.5 wmoUnit:km_h-1" : "1e+100 wmoUnit:km_h-1");
+	}
+}
+
+TEST(ForecastValidation, RejectsTrailingDataAndAcceptsWhitespace) {
+	for (const std::string& suffix : {std::string("x"), std::string("{}"), std::string(1, '\0')}) {
+		nws::ForecastResponse forecast;
+		EXPECT_FALSE(nws::deserialize_forecast_response("{}" + suffix, forecast).has_value());
+	}
+	nws::ForecastResponse forecast;
+	EXPECT_TRUE(nws::deserialize_forecast_response("{} \r\n\t", forecast).has_value());
+}

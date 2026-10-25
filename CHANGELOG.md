@@ -6,6 +6,22 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-25
+
+### Fixed
+
+- Preserve fractional and large quantitative wind speeds without narrowing casts.
+- Reject trailing JSON data and encode opaque query values.
+- Stop pagination on repeated cursors; retain one cursor per page to detect cycles.
+- Preserve custom Git hooks and install lint-only hooks in worktrees.
+- Keep parsing checks active without timing thresholds under instrumentation.
+- Keep portable CPU defaults and preserve parent release flags.
+- Build tests, examples, and LTO by default only for a top-level build.
+
+### Changed
+
+- Update Glaze to 9.0.0, GoogleTest to 1.18.0, and require CMake 3.31.
+
 ## [0.3.1] - 2026-05-24
 
 ### Fixed
@@ -99,7 +115,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   family).
 - `release.yml` auto-creates a GitHub Release on `vX.Y.Z` tag push,
   with body sourced from this CHANGELOG via `--notes-file` so inline
-  ` `code` ` spans survive
+  code spans survive
   ([`e5103c1`](https://github.com/Reddimus/nws-cpp/commit/e5103c1),
   [`89df4dd`](https://github.com/Reddimus/nws-cpp/commit/89df4dd)).
 - Tag/CMakeLists `VERSION` drift is caught at release time
@@ -165,7 +181,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Mermaid architecture diagram + API references in README
 - 137 unit tests via GoogleTest (FetchContent)
 
-[Unreleased]: https://github.com/Reddimus/nws-cpp/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Reddimus/nws-cpp/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/Reddimus/nws-cpp/compare/v0.3.1...v0.3.2
+[0.3.1]: https://github.com/Reddimus/nws-cpp/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Reddimus/nws-cpp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Reddimus/nws-cpp/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Reddimus/nws-cpp/compare/v0.1.0...v0.1.1

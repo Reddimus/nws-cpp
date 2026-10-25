@@ -4,6 +4,7 @@
 #include <expected>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace nws {
 
@@ -46,7 +47,7 @@ enum class ErrorCode {
 }
 
 /// Error information returned by SDK operations.
-/// Extends kalshi-cpp's Error with RFC 7807 Problem Details fields.
+/// Includes RFC 7807 Problem Details fields.
 struct Error {
 	ErrorCode code;
 	std::string message;

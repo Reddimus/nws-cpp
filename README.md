@@ -36,22 +36,22 @@ int main() {
 
 ## Features
 
-- **C++23** with `std::expected<T, Error>` for all return types (no exceptions)
-- **All core NWS endpoints**: Points, Forecasts, Observations, Stations, Alerts
+- **C++23** with `std::expected<T, Error>` for operation errors
+- **Core NWS endpoints**: Points, Forecasts, Observations, Stations, Alerts
 - **Unit conversion**: WMO unit codes parsed into typed enums with conversion functions
 - **Rate limiting**: Built-in token bucket rate limiter (NWS-tuned defaults)
 - **Retry with backoff**: Configurable exponential backoff with jitter
 - **Points cache**: Optional LRU cache for lat/lon -> grid coordinate lookups
 - **GeoJSON parsing**: Typed `GeoJsonFeature<T>` and `GeoJsonFeatureCollection<T>` wrappers
 - **RFC 7807 errors**: NWS Problem Details responses parsed into structured `Error` objects
-- **Pimpl pattern**: ABI-stable; implementation details hidden from public headers
+- **Pimpl pattern**: Client implementation details hidden from public headers
 
 ## Building
 
 ### Requirements
 
-- C++23 compiler (GCC 13+, Clang 16+)
-- CMake 3.20+
+- C++23 compiler (GCC 13+, Clang 19+ with libstdc++, or Clang 18+ with libc++ 18+)
+- CMake 3.31+
 - libcurl
 
 ### Build
@@ -68,9 +68,9 @@ make coverage     # Generate coverage report (requires lcov)
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `NWS_BUILD_TESTS` | `ON` | Build unit tests |
-| `NWS_BUILD_EXAMPLES` | `ON` | Build examples |
-| `NWS_ENABLE_LTO` | `ON` | Link-time optimization |
+| `NWS_BUILD_TESTS` | Top-level only | Build unit tests |
+| `NWS_BUILD_EXAMPLES` | Top-level only | Build examples |
+| `NWS_ENABLE_LTO` | Top-level only | Link-time optimization |
 | `NWS_NATIVE_ARCH` | `OFF` | `-march=native` tuning |
 | `NWS_ENABLE_SANITIZERS` | `OFF` | ASan + UBSan |
 | `NWS_ENABLE_COVERAGE` | `OFF` | gcov instrumentation |
@@ -87,7 +87,7 @@ Or with FetchContent:
 ```cmake
 FetchContent_Declare(nws-cpp
     GIT_REPOSITORY https://github.com/Reddimus/nws-cpp.git
-    GIT_TAG v0.3.1  # pin a tagged release
+    GIT_TAG v0.3.2  # pin a tagged release
 )
 FetchContent_MakeAvailable(nws-cpp)
 target_link_libraries(myapp PRIVATE nws)
@@ -168,7 +168,7 @@ make run-weather_monitor   # Polling station every 60s
 | Library | Purpose | Integration |
 |---------|---------|-------------|
 | libcurl | HTTP requests | `find_package(CURL)` |
-| [Glaze](https://github.com/stephenberry/glaze) v7.6.0 | JSON parsing (compile-time reflection, ~3.4x faster than the pre-migration nlohmann path on gridpoint forecasts) | `FetchContent` |
+| [Glaze](https://github.com/stephenberry/glaze) v9.0.0 | JSON parsing | `FetchContent` |
 | GoogleTest | Unit testing | `FetchContent` |
 
 ## References

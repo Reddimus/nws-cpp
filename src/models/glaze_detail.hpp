@@ -27,8 +27,7 @@
 ///   4. The pre-migration null-safety guarantees (every field defaults
 ///      on null) compose naturally over a generic walk.
 ///
-/// Performance: a single glz::generic parse + a hand-walk still gives ~4x
-/// over nlohmann on the gridpoint-forecast hot path (see tests/parse_benchmark.cpp).
+/// Parse-throughput guard: tests/parse_benchmark.cpp.
 
 #include "nws/error.hpp"
 #include "nws/geo.hpp"

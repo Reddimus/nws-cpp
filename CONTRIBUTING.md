@@ -41,7 +41,7 @@ below).
 ## Code style
 
 - **C++23** features encouraged: `std::expected<T, Error>` for all
-  error-returning operations, no exceptions in the public API.
+  operation errors; standard allocation failures may throw.
 - **No `auto`** for local variable declarations. Spell out the type so
   reviewers can verify intent without IDE help. Carve-outs:
   - Structured bindings: `auto& [k, v] = ...`

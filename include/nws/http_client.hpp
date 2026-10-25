@@ -13,8 +13,7 @@
 namespace nws {
 
 /// HTTP response
-/// Uses contiguous vector storage for headers instead of unordered_map
-/// for better cache locality (typically <10 headers in a response).
+/// Headers retain their received order.
 struct HttpResponse {
 	std::int16_t status_code; // HTTP status codes fit in int16 (100-599)
 	std::string body;

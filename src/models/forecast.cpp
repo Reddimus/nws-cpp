@@ -3,6 +3,9 @@
 
 #include "nws/models/forecast.hpp"
 
+#include <array>
+#include <charconv>
+#include <cmath>
 #include <glaze/glaze.hpp>
 #include <glaze/json/generic.hpp>
 #include <string>
@@ -29,9 +32,8 @@ void populate_forecast_period(const glz::generic& node, ForecastPeriod& p) {
 		detail::parse_quantitative_value(*pop, p.probability_of_precipitation);
 	}
 
-	// windSpeed: sometimes a string like "10 to 15 mph", sometimes a
-	// QuantitativeValue object. The pre-migration code coerced both into a
-	// std::string, so we mirror that behaviour exactly.
+	// NWS returns windSpeed as text or a QuantitativeValue.
+
 	if (node.is_object()) {
 		glz::generic::object_t::const_iterator ws_it = node.get_object().find("windSpeed");
 		if (ws_it != node.get_object().end()) {
@@ -41,8 +43,14 @@ void populate_forecast_period(const glz::generic& node, ForecastPeriod& p) {
 			} else if (ws.is_object()) {
 				std::optional<double> v = detail::get_optional_double(ws, "value");
 				std::string unit = detail::get_string(ws, "unitCode");
-				if (v) {
-					p.wind_speed = std::to_string(static_cast<int>(*v));
+				if (v && std::isfinite(*v)) {
+					std::array<char, 64> buffer{};
+					const std::to_chars_result rendered =
+						std::to_chars(buffer.data(), buffer.data() + buffer.size(), *v);
+					if (rendered.ec != std::errc{}) {
+						return;
+					}
+					p.wind_speed.assign(buffer.data(), rendered.ptr);
 					if (!unit.empty()) {
 						p.wind_speed += " ";
 						p.wind_speed += unit;

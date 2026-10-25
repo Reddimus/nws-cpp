@@ -15,9 +15,9 @@ make clean          # Remove build/
 ## Architecture
 
 - **Layered static libraries**: nws_core -> nws_http -> nws_models -> nws_api -> nws (INTERFACE)
-- **C++23**: `std::expected<T, Error>` for all returns, no exceptions
+- **C++23**: `std::expected<T, Error>` for operation errors
 - **Patterns**: Pimpl (HttpClient, NWSClient), non-copyable/movable clients, `[[nodiscard]]`
-- **JSON**: [Glaze](https://github.com/stephenberry/glaze) v7.6.0 via FetchContent (compile-time reflection, ~3.4x parse speedup over nlohmann on the gridpoint-forecast hot path — migrated 2026-05-11). The migration uses a `glz::generic` AST + hand-walk strategy (see `src/models/glaze_detail.hpp`) because the NWS payload mixes JSON-LD keys (`@id`, `@type`), polymorphic GeoJSON geometry variants, and mixed-shape fields (`ForecastPeriod.windSpeed` is string-or-object) that don't map cleanly onto a static `glz::meta`. See `tests/parse_benchmark.cpp` for the regression guard.
+- **JSON**: Glaze 9.0.0 via FetchContent; `glz::generic` handles JSON-LD and mixed-shape fields. Validate the complete input. See `src/models/glaze_detail.hpp` and `tests/parse_benchmark.cpp`.
 - **Tests**: GoogleTest via FetchContent. Fixture files in `tests/fixtures/`.
 
 ## Conventions

@@ -32,6 +32,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <string>
+#include <string_view>
 
 namespace {
 
@@ -94,7 +95,8 @@ std::string make_payload() {
 
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
+	const bool check_timing = argc < 2 || std::string_view(argv[1]) != "--no-timing";
 	const std::string payload = make_payload();
 	constexpr int kIterations = 1000;
 
@@ -134,14 +136,9 @@ int main() {
 	std::printf("parse_benchmark: payload=%zuB iters=%d\n", payload.size(), kIterations);
 	std::printf("  glaze: %8.3f ms total  (%8.3f us/op)\n", glaze_ms, us_per_op);
 
-	// Regression guard: at migration time, Glaze parsed this payload at
-	// ~205 us/op steady-state on x86_64-v3 with ctest thread contention
-	// in flight (~155 us/op standalone). Set the cap at 600 us/op — that's
-	// still meaningfully faster than the nlohmann baseline (~700 us/op
-	// under the same contention) and leaves a healthy slack window for
-	// slower CI runners, Debug builds, and noisy macOS runners.
+	// Coarse Release guard; instrumented and Debug builds check the output only.
 	constexpr double kMaxUsPerOp = 600.0;
-	if (us_per_op > kMaxUsPerOp) {
+	if (check_timing && us_per_op > kMaxUsPerOp) {
 		std::fprintf(stderr, "REGRESSION: %.3f us/op exceeds cap of %.0f us/op\n", us_per_op,
 					 kMaxUsPerOp);
 		return 1;

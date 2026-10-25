@@ -13,7 +13,6 @@ add_library(nws_core STATIC
 target_compile_features(nws_core PUBLIC cxx_std_23)
 target_include_directories(nws_core PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<BUILD_INTERFACE:${glaze_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
@@ -49,21 +48,24 @@ add_library(nws_models STATIC
 target_link_libraries(nws_models PUBLIC nws_core)
 target_include_directories(nws_models PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<BUILD_INTERFACE:${glaze_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-# API client library (full REST endpoint coverage)
+# Typed API client
 add_library(nws_api STATIC
     api/client.cpp
 )
 target_link_libraries(nws_api PUBLIC nws_core nws_http nws_models)
 target_include_directories(nws_api PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<BUILD_INTERFACE:${glaze_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 # Main SDK library (combines all)
 add_library(nws INTERFACE)
 target_link_libraries(nws INTERFACE nws_core nws_http nws_models nws_api)
+
+# Glaze never appears in public headers or the installed package.
+foreach(target nws_core nws_models nws_api)
+    target_include_directories(${target} PRIVATE ${glaze_SOURCE_DIR}/include)
+endforeach()

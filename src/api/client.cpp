@@ -1,4 +1,5 @@
 #include "nws/api.hpp"
+#include "nws/detail/url_encode.hpp"
 #include "nws/models/common.hpp"
 
 #include <format>
@@ -47,7 +48,7 @@ namespace {
 void append_param(std::string& query, bool& has_params, const std::string& key,
 				  const std::string& value) {
 	query += has_params ? "&" : "?";
-	query += key + "=" + value;
+	query += key + "=" + detail::encode_query_value(value);
 	has_params = true;
 }
 
