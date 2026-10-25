@@ -6,7 +6,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [0.3.2] - 2026-10-25
+## [0.4.0] - 2026-10-25
 
 ### Fixed
 
@@ -18,8 +18,19 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Keep portable CPU defaults and preserve parent release flags.
 - Build tests, examples, and LTO by default only for a top-level build.
 
+- Bound HTTP bodies, restrict protocols, and contain libcurl callback exceptions.
+- Preserve full cached point responses, reject invalid coordinates, and fix LRU edge cases.
+- Honor rate-limit timeouts on every retry; normalize unsafe durations and bucket settings.
+- Correct alert-count bounds, climate-text dates, and failed unit conversions.
+- Replace reused model outputs and run benchmarks offline.
+
+### Added
+
+- Consistent `nws::nws` targets and installed/FetchContent consumer checks.
+
 ### Changed
 
+- Require libcurl 7.85+ with thread-safe global initialization.
 - Update Glaze to 9.0.0, GoogleTest to 1.18.0, and require CMake 3.31.
 
 ## [0.3.1] - 2026-05-24
@@ -181,8 +192,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Mermaid architecture diagram + API references in README
 - 137 unit tests via GoogleTest (FetchContent)
 
-[Unreleased]: https://github.com/Reddimus/nws-cpp/compare/v0.3.2...HEAD
-[0.3.2]: https://github.com/Reddimus/nws-cpp/compare/v0.3.1...v0.3.2
+[Unreleased]: https://github.com/Reddimus/nws-cpp/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Reddimus/nws-cpp/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/Reddimus/nws-cpp/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Reddimus/nws-cpp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Reddimus/nws-cpp/compare/v0.1.1...v0.2.0

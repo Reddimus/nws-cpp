@@ -95,6 +95,7 @@ Result<void> deserialize_forecast_response(std::string_view body, ForecastRespon
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 
 	out.id = detail::get_string(*root, "id");
 	std::string type = detail::get_string(*root, "type");

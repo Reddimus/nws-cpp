@@ -16,6 +16,7 @@ Result<void> deserialize_office_properties(std::string_view body, OfficeProperti
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 	out.id = detail::get_string(*root, "id");
 	out.name = detail::get_string(*root, "name");
 	out.address = detail::get_string(*root, "address");
@@ -33,6 +34,7 @@ Result<void> deserialize_headline_properties(std::string_view body, HeadlineProp
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 	out.id = detail::get_string(*root, "id");
 	out.office_id = detail::get_string(*root, "office");
 	out.title = detail::get_string(*root, "title");

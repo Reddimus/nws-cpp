@@ -63,9 +63,15 @@ target_include_directories(nws_api PUBLIC
 
 # Main SDK library (combines all)
 add_library(nws INTERFACE)
+add_library(nws::nws ALIAS nws)
 target_link_libraries(nws INTERFACE nws_core nws_http nws_models nws_api)
 
 # Glaze never appears in public headers or the installed package.
 foreach(target nws_core nws_models nws_api)
-    target_include_directories(${target} PRIVATE ${glaze_SOURCE_DIR}/include)
+    target_include_directories(${target} SYSTEM PRIVATE ${glaze_SOURCE_DIR}/include)
+    target_include_directories(${target} PRIVATE ${PROJECT_SOURCE_DIR}/src)
 endforeach()
+
+if(WIN32)
+    target_compile_definitions(nws_http PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+endif()

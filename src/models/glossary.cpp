@@ -17,6 +17,7 @@ Result<void> deserialize_glossary_response(std::string_view body, GlossaryRespon
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 
 	const glz::generic* glossary = detail::find_array(*root, "glossary");
 	if (glossary == nullptr) {

@@ -8,11 +8,16 @@ add_executable(nws_tests
     test_pagination.cpp
     test_cache.cpp
     test_api.cpp
+    test_audit_regressions.cpp
 )
 target_link_libraries(nws_tests PRIVATE
     nws_core nws_http nws_models nws_api
     GTest::gtest_main GTest::gmock
 )
+if(WIN32)
+    target_compile_definitions(nws_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+    target_link_libraries(nws_tests PRIVATE ws2_32)
+endif()
 include(GoogleTest)
 gtest_discover_tests(nws_tests)
 

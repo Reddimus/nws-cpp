@@ -90,6 +90,7 @@ Result<void> deserialize_observation_response(std::string_view body, Observation
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 	populate_observation_response(*root, out);
 	return {};
 }
@@ -100,6 +101,7 @@ Result<void> deserialize_observation_collection(std::string_view body,
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 
 	std::string type = detail::get_string(*root, "type");
 	out.type = type.empty() ? "FeatureCollection" : std::move(type);

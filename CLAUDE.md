@@ -26,7 +26,7 @@ make clean          # Remove build/
 - Namespace: `nws`
 - **No `auto`**: Use explicit types. `auto` is only acceptable for iterators, structured bindings (`auto& [key, val]`), and range-for loops (`const auto& x : container`).
 - Null-safety: all `detail::get_*` helpers in `src/models/glaze_detail.hpp` treat missing / null / type-mismatched JSON values as default-constructed output. Use those instead of inlining `glz::generic` lookups so the per-field error-handling stays uniform.
-- Models declare `deserialize_*(std::string_view, T&)` in headers, implement in `.cpp` files. The previous `from_json(const nlohmann::json&, T&)` overloads have been removed.
+- Models declare `deserialize_*(std::string_view, T&)` in headers, implement in `.cpp` files.
 - Include order: project headers first, then system headers (enforced by clang-format)
 
 ## CI

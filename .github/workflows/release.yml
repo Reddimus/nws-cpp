@@ -26,8 +26,8 @@ jobs:
         # Pin the source-of-truth: the tag X.Y.Z must equal the
         # `project(nws-cpp VERSION X.Y.Z ...)` field in
         # CMakeLists.txt. Without this guard the two can drift
-        # silently and corrupt `find_package(nws-cpp VERSION X.Y.Z)`
-        # consumer queries (the generated nws-cppConfigVersion.cmake
+        # silently and corrupt `find_package(nws VERSION X.Y.Z)`
+        # consumer queries (the generated nwsConfigVersion.cmake
         # tracks PROJECT_VERSION).
         run: |
           tag="${GITHUB_REF#refs/tags/}"

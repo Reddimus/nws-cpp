@@ -9,13 +9,11 @@
 #include <string_view>
 #include <variant>
 
+#include "json.hpp"
+
 namespace nws::detail {
 
 namespace {
-
-struct JsonReadOptions : glz::opts {
-	bool validate_trailing_whitespace = true;
-};
 
 const glz::generic::object_t* as_object(const glz::generic& node) {
 	if (!node.is_object()) {

@@ -84,6 +84,7 @@ Result<void> deserialize_gridpoint_response(std::string_view body, GridpointResp
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 
 	out.id = detail::get_string(*root, "id");
 	std::string type = detail::get_string(*root, "type");

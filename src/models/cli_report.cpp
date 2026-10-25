@@ -36,9 +36,9 @@ std::vector<std::string_view> lines_of(std::string_view text) {
 	return out;
 }
 
-bool icontains(std::string_view hay, std::string_view needle) {
+std::size_t ifind(std::string_view hay, std::string_view needle) {
 	if (needle.size() > hay.size()) {
-		return false;
+		return std::string_view::npos;
 	}
 	for (std::size_t i = 0; i + needle.size() <= hay.size(); ++i) {
 		bool ok = true;
@@ -50,10 +50,14 @@ bool icontains(std::string_view hay, std::string_view needle) {
 			}
 		}
 		if (ok) {
-			return true;
+			return i;
 		}
 	}
-	return false;
+	return std::string_view::npos;
+}
+
+bool icontains(std::string_view hay, std::string_view needle) {
+	return ifind(hay, needle) != std::string_view::npos;
 }
 
 // First signed integer token in `s`, if any.
@@ -79,7 +83,7 @@ std::optional<double> first_int(std::string_view s) {
 // Month number from the first WHOLE word in `line` whose first three
 // letters are a month abbreviation. Word-based (not substring) so e.g.
 // "SUMMARY" does not falsely match "MAR".
-int month_num(std::string_view line) {
+int month_num(std::string_view line, std::size_t* month_end = nullptr) {
 	static constexpr std::array<const char*, 12> kM = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN",
 													   "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"};
 	std::size_t i = 0;
@@ -99,6 +103,9 @@ int month_num(std::string_view line) {
 			for (int m = 0; m < 12; ++m) {
 				const char* abbr = kM[static_cast<std::size_t>(m)];
 				if (w[0] == abbr[0] && w[1] == abbr[1] && w[2] == abbr[2]) {
+					if (month_end != nullptr) {
+						*month_end = j;
+					}
 					return m + 1;
 				}
 			}
@@ -307,11 +314,12 @@ Result<CliReport> parse_cli_product_text(std::string_view product_text) {
 
 		// "CLIMATE SUMMARY FOR MAY 16 2026" / "...FOR MAY 16 2026"
 		if (r.date.empty() && icontains(ln, "FOR ") && month_num(ln) != 0) {
-			const int mm = month_num(ln);
+			std::size_t month_end = 0;
+			const int mm = month_num(ln, &month_end);
 			std::optional<double> dd;
 			std::optional<double> yyyy;
-			// scan tokens after the month for day then year
-			std::size_t p = 0;
+			// Scan the day and year after the month.
+			std::size_t p = month_end;
 			while (p < ln.size()) {
 				while (p < ln.size() && !std::isdigit(static_cast<unsigned char>(ln[p]))) {
 					++p;
@@ -348,10 +356,10 @@ Result<CliReport> parse_cli_product_text(std::string_view product_text) {
 			in_temperature = false;
 		}
 		if (in_temperature && !r.tmax_f && icontains(ln, "MAXIMUM")) {
-			r.tmax_f = first_int(ln.substr(ln.find("MAXIMUM") + 7));
+			r.tmax_f = first_int(ln.substr(ifind(ln, "MAXIMUM") + 7));
 		}
 		if (in_temperature && !r.tmin_f && icontains(ln, "MINIMUM")) {
-			r.tmin_f = first_int(ln.substr(ln.find("MINIMUM") + 7));
+			r.tmin_f = first_int(ln.substr(ifind(ln, "MINIMUM") + 7));
 		}
 	}
 

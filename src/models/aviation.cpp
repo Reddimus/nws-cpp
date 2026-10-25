@@ -71,6 +71,7 @@ Result<void> deserialize_sigmet_feature(std::string_view body, SigmetFeature& ou
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 	populate_sigmet_feature(*root, out);
 	return {};
 }
@@ -80,6 +81,7 @@ Result<void> deserialize_sigmet_collection(std::string_view body, SigmetCollecti
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 
 	std::string type = detail::get_string(*root, "type");
 	out.type = type.empty() ? "FeatureCollection" : std::move(type);
@@ -103,6 +105,7 @@ Result<void> deserialize_cwa_feature(std::string_view body, CWAFeature& out) {
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 	populate_cwa_feature(*root, out);
 	return {};
 }
@@ -112,6 +115,7 @@ Result<void> deserialize_cwa_collection(std::string_view body, CWACollectionResp
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 
 	std::string type = detail::get_string(*root, "type");
 	out.type = type.empty() ? "FeatureCollection" : std::move(type);

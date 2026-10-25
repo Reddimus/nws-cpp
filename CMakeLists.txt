@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.31)
-project(nws-cpp VERSION 0.3.2 LANGUAGES CXX)
+project(nws-cpp VERSION 0.4.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -49,7 +49,7 @@ if(NWS_ENABLE_COVERAGE)
 endif()
 
 # Find dependencies
-find_package(CURL REQUIRED)
+find_package(CURL 7.85 REQUIRED)
 
 include(FetchContent)
 
@@ -73,6 +73,8 @@ add_subdirectory(src)
 if(NWS_BUILD_TESTS)
     FetchContent_Declare(
         googletest
+        EXCLUDE_FROM_ALL
+        SYSTEM
         GIT_REPOSITORY https://github.com/google/googletest.git
         GIT_TAG v1.18.0
         GIT_SHALLOW TRUE

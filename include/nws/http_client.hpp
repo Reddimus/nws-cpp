@@ -3,6 +3,7 @@
 #include "nws/error.hpp"
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -27,6 +28,8 @@ struct ClientConfig {
 	std::string accept{"application/geo+json"};
 	std::chrono::seconds timeout{30};
 	bool verify_ssl{true};
+	/// Maximum decompressed response body; 0 disables the limit.
+	std::size_t max_response_bytes{64 * 1024 * 1024};
 };
 
 /// HTTP client for NWS API

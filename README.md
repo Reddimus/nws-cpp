@@ -52,7 +52,7 @@ int main() {
 
 - C++23 compiler (GCC 13+, Clang 19+ with libstdc++, or Clang 18+ with libc++ 18+)
 - CMake 3.31+
-- libcurl
+- libcurl 7.85+ with thread-safe global initialization
 
 ### Build
 
@@ -87,10 +87,10 @@ Or with FetchContent:
 ```cmake
 FetchContent_Declare(nws-cpp
     GIT_REPOSITORY https://github.com/Reddimus/nws-cpp.git
-    GIT_TAG v0.3.2  # pin a tagged release
+    GIT_TAG v0.4.0  # pin a tagged release
 )
 FetchContent_MakeAvailable(nws-cpp)
-target_link_libraries(myapp PRIVATE nws)
+target_link_libraries(myapp PRIVATE nws::nws)
 ```
 
 ## Architecture
@@ -99,8 +99,8 @@ target_link_libraries(myapp PRIVATE nws)
 graph LR
     nws_core["nws_core<br/><small>error, rate_limit, retry, units</small>"]
     nws_http["nws_http<br/><small>libcurl HTTP client</small>"]
-    nws_models["nws_models<br/><small>13 GeoJSON models<br/>+ Glaze deserialize_* parsers</small>"]
-    nws_api["nws_api<br/><small>NWSClient<br/>all endpoints</small>"]
+    nws_models["nws_models<br/><small>Typed models<br/>and parsers</small>"]
+    nws_api["nws_api<br/><small>NWSClient<br/>core endpoints</small>"]
     nws["nws<br/><small>INTERFACE</small>"]
 
     nws_core --> nws_http
@@ -114,6 +114,8 @@ graph LR
 
 ### Endpoints
 
+The client wraps 20 core GET operations. The upstream [OpenAPI contract](https://api.weather.gov/openapi.json) lists 69 operations as of 2026-10-25.
+
 | Category | Endpoints |
 |----------|-----------|
 | Points | `get_point()` |
@@ -123,6 +125,7 @@ graph LR
 | Alerts | `get_alerts()`, `get_active_alerts()`, `get_active_alert_count()`, `get_active_alerts_by_area()`, `get_active_alerts_by_zone()`, `get_alert()`, `get_alert_types()` |
 | Zones | `get_zone()`, `get_zone_forecast()` |
 | Glossary | `get_glossary()` |
+| Products | `get_latest_product()`, `get_product()` |
 
 ### Convenience Methods
 
@@ -131,9 +134,9 @@ graph LR
 | `get_forecast_for_location(lat, lon)` | Auto-resolves point -> grid -> forecast |
 | `get_current_weather(lat, lon)` | Auto-resolves point -> station -> latest observation |
 
-### Model Types (all with typed `deserialize_*(std::string_view, T&) -> Result<void>` parsers)
+### Parsers
 
-Point, Forecast, Observation, Station, Alert, Zone, Gridpoint, Office, Product, Aviation (SIGMET/CWA), Radar, Glossary
+Point, Forecast, Observation, Station, Alert, Zone, Gridpoint, Office, Product, Aviation, Radar, and Glossary have typed JSON parsers. Climate products also have `CliReport` and `NbpStation` text parsers.
 
 ### Model Types
 
@@ -156,10 +159,13 @@ make run-get_alerts        # Active alerts by state
 make run-weather_monitor   # Polling station every 60s
 ```
 
+`ClientConfig::max_response_bytes` limits decompressed HTTP bodies to 64 MiB;
+set it to `0` to disable the limit. Only HTTP(S) URLs and redirects are accepted.
+
 ## NWS API Notes
 
 - **No API key** required. A `User-Agent` header is mandatory.
-- **Rate limiting**: Undisclosed thresholds; SDK defaults to 5 req/sec with retry on 503.
+- **Rate limiting**: Undisclosed thresholds; SDK defaults to a burst of five, then one token/sec. Each retry takes a token.
 - **Response format**: GeoJSON (`application/geo+json`) with nested `properties` objects.
 - **Errors**: RFC 7807 Problem Details with `correlationId` for debugging.
 

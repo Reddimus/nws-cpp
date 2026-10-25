@@ -16,6 +16,7 @@ Result<void> deserialize_product_properties(std::string_view body, ProductProper
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 	out.id = detail::get_string(*root, "id");
 	out.wmo_collective_id = detail::get_string(*root, "wmoCollectiveId");
 	out.issuing_office = detail::get_string(*root, "issuingOffice");
@@ -32,6 +33,7 @@ Result<void> deserialize_product_type_properties(std::string_view body,
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 	out.type_id = detail::get_string(*root, "productCode");
 	out.type_name = detail::get_string(*root, "productName");
 	return {};

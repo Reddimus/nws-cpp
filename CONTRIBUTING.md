@@ -12,24 +12,27 @@ git clone https://github.com/Reddimus/nws-cpp.git
 cd nws-cpp
 
 # One-time: install build deps (Ubuntu 24.04 example)
-sudo apt install -y build-essential cmake clang-format \
+sudo apt install -y build-essential clang-format \
     libssl-dev libcurl4-openssl-dev
 
 make build      # CMake configure + Release build
 make test       # Run unit tests (ctest)
 ```
 
-macOS uses Homebrew (`brew install openssl curl`),
+Use CMake 3.31+; Ubuntu 24.04's packaged 3.28 is too old.
+macOS uses Homebrew (`brew install cmake curl clang-format`),
 Windows uses vcpkg (the CI workflow has the exact invocations).
 
 ## Development workflow
 
 ```bash
-make debug          # Debug build with symbols + sanitizers
+make debug          # Debug build in build-debug/
+make test BUILD_DIR=build-debug BUILD_TYPE=Debug  # Test that build
 make test           # Run unit tests (ctest)
 make lint           # clang-format --dry-run + cpp_auto_audit
 make format         # Apply clang-format in place
 make coverage       # lcov coverage report (Debug build)
+make consumers      # Installed and FetchContent integration checks
 make clean          # Remove build/
 ```
 
@@ -51,9 +54,12 @@ below).
   `make format` applies it.
 - **Includes**: project headers first, then system headers
   (enforced by clang-format `SortIncludes`).
-- **JSON**: use null-safe helpers from `models/common.hpp`. Do NOT use
-  `j.value("key", default)` — it throws on JSON null in nlohmann/json
-  v3.
+- **JSON**: use the strict options in `src/json.hpp` and null-safe helpers
+  in `src/models/glaze_detail.hpp`. Successful deserializers replace output.
+
+For ASan/UBSan, configure a separate build with
+`cmake -S . -B build-asan -DCMAKE_BUILD_TYPE=Debug -DNWS_ENABLE_SANITIZERS=ON -DNWS_ENABLE_LTO=OFF`,
+then build it and run `ctest --test-dir build-asan --output-on-failure`.
 
 ## PR conventions
 
@@ -76,9 +82,9 @@ Releases are cut from `main` via tag push:
 
 ```bash
 # 1. Update CMakeLists.txt VERSION and CHANGELOG.md [Unreleased] → [vX.Y.Z]
-# 2. Commit the version bump
-git commit -am "chore(release): cut vX.Y.Z"
-git push origin main
+# 2. Merge the version bump through a PR after CI passes
+git switch main
+git pull --ff-only
 
 # 3. Tag and push the tag — release.yml auto-creates the GitHub Release
 git tag vX.Y.Z

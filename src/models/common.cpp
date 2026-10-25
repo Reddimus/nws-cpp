@@ -16,6 +16,7 @@ Result<void> deserialize_quantitative_value(std::string_view body, QuantitativeV
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 	detail::parse_quantitative_value(*root, out);
 	return {};
 }
