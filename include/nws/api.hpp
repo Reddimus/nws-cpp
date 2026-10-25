@@ -32,6 +32,7 @@ enum class UnitSystem : std::uint8_t { US, SI };
 
 // ===== Request parameter structures =====
 
+/// String-valued multi-select filters also accept comma-separated alternatives.
 struct GetAlertsParams {
 	std::optional<std::vector<std::string>> status;
 	std::optional<std::string> message_type;
@@ -87,7 +88,8 @@ struct GetProductsParams {
 /// Core National Weather Service REST client
 ///
 /// Wraps the core endpoints listed in README.md.
-/// Uses HttpClient for HTTP communication with built-in rate limiting and retry.
+/// Uses HttpClient with built-in rate limiting and retry. Not thread-safe;
+/// use one client per thread or guard its calls.
 class NWSClient {
 public:
 	struct Config {

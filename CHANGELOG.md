@@ -12,6 +12,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Preserve fractional and large quantitative wind speeds without narrowing casts.
 - Reject trailing JSON data and encode opaque query values.
+- Serialize alert array filters as comma-separated values, as NWS requires.
 - Stop pagination on repeated cursors; retain one cursor per page to detect cycles.
 - Preserve custom Git hooks and install lint-only hooks in worktrees.
 - Keep parsing checks active without timing thresholds under instrumentation.

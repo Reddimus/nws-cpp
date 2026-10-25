@@ -66,9 +66,20 @@ void append_param(std::string& query, bool& has_params, const std::string& key,
 
 void append_vector_param(std::string& query, bool& has_params, const std::string& key,
 						 const std::vector<std::string>& values) {
-	for (const std::string& v : values) {
-		append_param(query, has_params, key, v);
+	if (values.empty()) {
+		return;
 	}
+	query += has_params ? "&" : "?";
+	query += key + "=";
+	bool first = true;
+	for (const std::string& value : values) {
+		if (!first) {
+			query += ',';
+		}
+		query += detail::encode_query_value(value);
+		first = false;
+	}
+	has_params = true;
 }
 
 // Extract correlation ID from response headers

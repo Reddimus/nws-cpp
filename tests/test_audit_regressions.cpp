@@ -9,6 +9,7 @@
 #include <string>
 #include <thread>
 #include <variant>
+#include <vector>
 
 #include "support/loopback_server.hpp"
 
@@ -233,6 +234,21 @@ TEST(AuditRegression, RetryPolicyRejectsNonHttpStatusesAndBoundsInvalidSettings)
 	policy.initial_delay = policy.max_delay;
 	policy.jitter_factor = std::numeric_limits<double>::infinity();
 	EXPECT_EQ(nws::calculate_retry_delay(1, policy), policy.max_delay);
+}
+
+TEST(AuditRegression, AlertArrayFiltersUseCommaSeparatedValues) {
+	LoopbackServer server{
+		[](const LoopbackRequest&) { return http_response("200 OK", R"({"features":[]})"); }};
+	nws::NWSClient client(local(server));
+	nws::GetAlertsParams params;
+	params.area = std::vector<std::string>{"KS", "OK"};
+	params.status = std::vector<std::string>{"actual", "test"};
+	const nws::Result<nws::AlertCollectionResponse> result = client.get_alerts(params);
+	ASSERT_TRUE(result);
+	const std::string target = server.requests().at(0).target;
+	EXPECT_NE(target.find("area=KS,OK"), std::string::npos);
+	EXPECT_NE(target.find("status=actual,test"), std::string::npos);
+	EXPECT_EQ(target.find("&area="), target.rfind("&area="));
 }
 
 } // namespace
