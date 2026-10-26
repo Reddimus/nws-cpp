@@ -1,6 +1,5 @@
-# EditorConfig — consistent style across editors for PredictionCastAI C++ repos
+# Consistent formatting across editors.
 # https://editorconfig.org/
-# Matches the fleet-standard .clang-format: tab-indent (width 4), LF, UTF-8.
 
 root = true
 
@@ -15,8 +14,8 @@ indent_style = tab
 indent_size = 4
 max_line_length = 100
 
-[*.{cmake,CMakeLists.txt}]
-indent_style = tab
+[{CMakeLists.txt,*.cmake,*.cmake.in}]
+indent_style = space
 indent_size = 4
 
 [Makefile]
