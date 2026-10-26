@@ -168,7 +168,10 @@ Result<HttpResponse> HttpClient::get(std::string_view path) const {
 }
 
 const ClientConfig& HttpClient::config() const noexcept {
-	static const ClientConfig moved_from{};
-	return impl_ ? impl_->config : moved_from;
+	if (impl_) {
+		return impl_->config;
+	}
+	static const ClientConfig moved_from{.base_url = {}, .user_agent = {}, .accept = {}};
+	return moved_from;
 }
 } // namespace nws

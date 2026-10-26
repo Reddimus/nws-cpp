@@ -1,12 +1,14 @@
 #include "nws/models/cli_report.hpp"
 #include "nws/nws.hpp"
 
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <gtest/gtest.h>
 #include <limits>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <variant>
 #include <vector>
@@ -249,6 +251,30 @@ TEST(AuditRegression, AlertArrayFiltersUseCommaSeparatedValues) {
 	EXPECT_NE(target.find("area=KS,OK"), std::string::npos);
 	EXPECT_NE(target.find("status=actual,test"), std::string::npos);
 	EXPECT_EQ(target.find("&area="), target.rfind("&area="));
+}
+
+TEST(AuditRegression, BorrowedJsonViewsNeedNoTerminatingByte) {
+	const std::array<char, 10> valid = {'{', '"', 'i', 'd', '"', ':', '"', 'p', '"', '}'};
+	nws::PointResponse point;
+	ASSERT_TRUE(
+		nws::deserialize_point_response(std::string_view(valid.data(), valid.size()), point));
+	EXPECT_EQ(point.id, "p");
+	const std::vector<char> truncated = {'{', '"', 'i', 'd', '"', ':', '"', 'x'};
+	EXPECT_FALSE(nws::deserialize_point_response(
+		std::string_view(truncated.data(), truncated.size()), point));
+	for (const std::string& document :
+		 {std::string("true"), std::string("false"), std::string("null"),
+		  std::string(R"({"id":"value"})"), std::string("[true,false,null,1.25]"),
+		  std::string(R"("\u0041")")}) {
+		for (std::size_t length = 1; length <= document.size(); ++length) {
+			const std::vector<char> buffer(document.begin(),
+										   document.begin() + static_cast<std::ptrdiff_t>(length));
+			const nws::Result<void> result = nws::deserialize_point_response(
+				std::string_view(buffer.data(), buffer.size()), point);
+			EXPECT_EQ(result.has_value(), length == document.size())
+				<< document << " length=" << length;
+		}
+	}
 }
 
 } // namespace

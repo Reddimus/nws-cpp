@@ -32,7 +32,7 @@ Error Error::from_response(int status, const std::string& body, const std::strin
 	// may be present, missing, or null, and there's no schema we want to
 	// reject on.
 	glz::generic root{};
-	glz::error_ctx ec = glz::read<detail::JsonReadOptions{}>(root, body);
+	glz::error_ctx ec = glz::read<detail::kJsonReadOptions>(root, body);
 	if (!ec && root.is_object()) {
 		const glz::generic::object_t& obj = root.get_object();
 		glz::generic::object_t::const_iterator it;

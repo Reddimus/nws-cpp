@@ -416,7 +416,7 @@ Result<std::vector<std::string>> NWSClient::get_alert_types() {
 	// Small one-off shape: {"eventTypes": [...]}. Use glz::generic
 	// directly here instead of carving out yet another deserialize_*.
 	glz::generic root{};
-	glz::error_ctx ec = glz::read<detail::JsonReadOptions{}>(root, *body);
+	glz::error_ctx ec = glz::read<detail::kJsonReadOptions>(root, *body);
 	if (ec) {
 		return std::unexpected(Error::parse(glz::format_error(ec, *body)));
 	}
