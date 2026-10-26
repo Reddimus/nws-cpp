@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.20)
-project(nws-cpp VERSION 0.3.1 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.31)
+project(nws-cpp VERSION 0.4.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -10,16 +10,10 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 # Options
-option(NWS_BUILD_TESTS "Build tests" ON)
-option(NWS_BUILD_EXAMPLES "Build examples" ON)
-option(NWS_ENABLE_LTO "Enable Link Time Optimization" ON)
+option(NWS_BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
+option(NWS_BUILD_EXAMPLES "Build examples" ${PROJECT_IS_TOP_LEVEL})
+option(NWS_ENABLE_LTO "Enable Link Time Optimization" ${PROJECT_IS_TOP_LEVEL})
 option(NWS_NATIVE_ARCH "Use -march=native for CPU-specific tuning" OFF)
-
-# Aggressive optimization flags for Release builds. MSVC has its own
-# Release defaults; only override for GCC/Clang.
-if(NOT MSVC)
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
-endif()
 
 # Enable LTO if requested and supported
 if(NWS_ENABLE_LTO)
@@ -33,20 +27,9 @@ if(NWS_ENABLE_LTO)
     endif()
 endif()
 
-# CPU-specific tuning. GCC/Clang only.
-if(NOT MSVC)
-    if(NWS_NATIVE_ARCH)
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
-        message(STATUS "Using -march=native for CPU-specific optimizations")
-    else()
-        include(CheckCXXCompilerFlag)
-        check_cxx_compiler_flag("-march=x86-64-v3" COMPILER_SUPPORTS_X86_64_V3)
-        if(COMPILER_SUPPORTS_X86_64_V3)
-            set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=x86-64-v3")
-        else()
-            set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -mtune=generic")
-        endif()
-    endif()
+# Native tuning is opt-in; distributed binaries keep the compiler's baseline.
+if(NWS_NATIVE_ARCH AND NOT MSVC)
+    add_compile_options(-march=native)
 endif()
 
 # Sanitizer support
@@ -66,18 +49,17 @@ if(NWS_ENABLE_COVERAGE)
 endif()
 
 # Find dependencies
-find_package(CURL REQUIRED)
+find_package(CURL 7.85 REQUIRED)
 
 include(FetchContent)
 
-# Glaze - JSON library (compile-time reflection, ~4x parse speedup over
-# nlohmann on the NWS gridpoint-forecast hot path, which is what consumers
-# like kalshi-trader and polymarket-trader hit on the 60+-layer payload).
-# License: MIT.
+# Glaze is an implementation-only JSON dependency (MIT).
 FetchContent_Declare(
     glaze
+    EXCLUDE_FROM_ALL
+    SYSTEM
     GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-    GIT_TAG v7.6.0
+    GIT_TAG v9.0.0
     GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(glaze)
@@ -91,8 +73,10 @@ add_subdirectory(src)
 if(NWS_BUILD_TESTS)
     FetchContent_Declare(
         googletest
+        EXCLUDE_FROM_ALL
+        SYSTEM
         GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG v1.15.2
+        GIT_TAG v1.18.0
         GIT_SHALLOW TRUE
     )
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)

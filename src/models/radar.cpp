@@ -73,6 +73,7 @@ Result<void> deserialize_radar_station_feature(std::string_view body, RadarStati
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 	populate_radar_station_feature(*root, out);
 	return {};
 }
@@ -83,6 +84,7 @@ Result<void> deserialize_radar_station_collection(std::string_view body,
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 
 	std::string type = detail::get_string(*root, "type");
 	out.type = type.empty() ? "FeatureCollection" : std::move(type);
@@ -107,6 +109,7 @@ Result<void> deserialize_radar_server_properties(std::string_view body,
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 	out.id = detail::get_string(*root, "id");
 	out.host = detail::get_string(*root, "host");
 	return {};

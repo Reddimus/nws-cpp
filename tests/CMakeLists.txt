@@ -8,11 +8,16 @@ add_executable(nws_tests
     test_pagination.cpp
     test_cache.cpp
     test_api.cpp
+    test_audit_regressions.cpp
 )
 target_link_libraries(nws_tests PRIVATE
     nws_core nws_http nws_models nws_api
     GTest::gtest_main GTest::gmock
 )
+if(WIN32)
+    target_compile_definitions(nws_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+    target_link_libraries(nws_tests PRIVATE ws2_32)
+endif()
 include(GoogleTest)
 gtest_discover_tests(nws_tests)
 
@@ -26,11 +31,12 @@ target_link_libraries(nws_glaze_test PRIVATE
 )
 add_test(NAME nws_glaze_test COMMAND nws_glaze_test)
 
-# Glaze parse-throughput regression guard. The bench parses a representative
-# NWS gridpoint-forecast response 1k times and asserts us/op stays under a
-# cap. ctest --timeout = 30s; actual wall-clock is ~50-150 ms on x86_64-v3,
-# so the timeout fires only on catastrophic regression.
+# Release throughput guard; instrumentation still verifies parsing and checksums.
 add_executable(nws_parse_benchmark parse_benchmark.cpp)
 target_link_libraries(nws_parse_benchmark PRIVATE nws_models)
-add_test(NAME nws_parse_benchmark COMMAND nws_parse_benchmark)
+if(NWS_ENABLE_SANITIZERS OR NWS_ENABLE_COVERAGE)
+    add_test(NAME nws_parse_benchmark COMMAND nws_parse_benchmark --no-timing)
+else()
+    add_test(NAME nws_parse_benchmark COMMAND nws_parse_benchmark $<$<CONFIG:Debug>:--no-timing>)
+endif()
 set_tests_properties(nws_parse_benchmark PROPERTIES TIMEOUT 30)

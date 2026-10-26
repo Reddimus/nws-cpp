@@ -4,6 +4,8 @@
 #include <glaze/json/generic.hpp>
 #include <string>
 
+#include "json.hpp"
+
 namespace nws {
 
 Error Error::from_response(int status, const std::string& body, const std::string& correlation_id) {
@@ -16,9 +18,9 @@ Error Error::from_response(int status, const std::string& body, const std::strin
 		err.code = ErrorCode::NotFound;
 	} else if (status == 400) {
 		err.code = ErrorCode::InvalidRequest;
-	} else if (status == 503) {
+	} else if (status == 503 || status == 429) {
 		err.code = ErrorCode::RateLimited;
-	} else if (status >= 500) {
+	} else if (status >= 500 && status < 600) {
 		err.code = ErrorCode::ServerError;
 	} else {
 		err.code = ErrorCode::Unknown;
@@ -30,7 +32,7 @@ Error Error::from_response(int status, const std::string& body, const std::strin
 	// may be present, missing, or null, and there's no schema we want to
 	// reject on.
 	glz::generic root{};
-	glz::error_ctx ec = glz::read_json(root, body);
+	glz::error_ctx ec = glz::read<detail::kJsonReadOptions>(root, body);
 	if (!ec && root.is_object()) {
 		const glz::generic::object_t& obj = root.get_object();
 		glz::generic::object_t::const_iterator it;

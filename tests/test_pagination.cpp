@@ -129,3 +129,24 @@ TEST(PaginatedIteratorTest, ExhaustedReturnsEmpty) {
 
 } // namespace
 } // namespace nws
+
+TEST(PaginationSafety, EncodesOpaqueCursorBytes) {
+	nws::PaginationParams params;
+	params.cursor = nws::Cursor{"a+/=&?# %"};
+	EXPECT_EQ(nws::build_paginated_query(params), "cursor=a%2B%2F%3D%26%3F%23%20%25");
+}
+
+TEST(PaginationSafety, RejectsCursorCyclesWithoutFetchingForever) {
+	int calls = 0;
+	nws::PaginatedIterator<int> pages(
+		[&](const nws::PaginationParams&) -> nws::Result<nws::PaginatedResponse<int>> {
+			++calls;
+			return nws::PaginatedResponse<int>{{calls}, nws::Cursor{calls % 2 == 1 ? "a" : "b"}};
+		});
+	ASSERT_TRUE(pages.next().has_value());
+	ASSERT_TRUE(pages.next().has_value());
+	const nws::Result<std::vector<int>> repeated = pages.next();
+	EXPECT_FALSE(repeated.has_value());
+	EXPECT_TRUE(pages.is_exhausted());
+	EXPECT_EQ(calls, 3);
+}

@@ -52,6 +52,7 @@ Result<void> deserialize_zone_feature(std::string_view body, ZoneFeature& out) {
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 	populate_zone_feature(*root, out);
 	return {};
 }
@@ -61,6 +62,7 @@ Result<void> deserialize_zone_collection(std::string_view body, ZoneCollectionRe
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 
 	std::string type = detail::get_string(*root, "type");
 	out.type = type.empty() ? "FeatureCollection" : std::move(type);
@@ -85,6 +87,7 @@ Result<void> deserialize_zone_forecast(std::string_view body, ZoneForecastProper
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 
 	// The API returns {"properties": {"zone": [...], "periods": [...]}}; the
 	// pre-migration api/client.cpp peeled the "properties" key before calling

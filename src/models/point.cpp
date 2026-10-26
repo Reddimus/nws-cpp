@@ -57,6 +57,7 @@ Result<void> deserialize_point_response(std::string_view body, PointResponse& ou
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 
 	out.id = detail::get_string(*root, "id");
 	std::string type = detail::get_string(*root, "type");

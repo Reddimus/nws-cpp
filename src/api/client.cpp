@@ -1,6 +1,9 @@
 #include "nws/api.hpp"
+#include "nws/detail/url_encode.hpp"
 #include "nws/models/common.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <format>
 #include <glaze/glaze.hpp>
 #include <glaze/json/generic.hpp>
@@ -8,19 +11,22 @@
 #include <string_view>
 #include <utility>
 
+#include "json.hpp"
+
 namespace nws {
 
 struct NWSClient::Impl {
 	HttpClient http;
 	RateLimiter rate_limiter;
 	RetryPolicy retry_policy;
-	std::optional<LruCache<CoordinateKey, PointProperties>> points_cache;
+	std::optional<LruCache<CoordinateKey, PointResponse>> points_cache;
 
 	Impl(Config config)
 		: http(std::move(config.http)), rate_limiter(config.rate_limit),
 		  retry_policy(config.retry) {
 		if (config.enable_cache) {
-			points_cache.emplace(config.cache);
+			points_cache.emplace(LruCache<CoordinateKey, PointResponse>::Config{
+				config.cache.max_entries, config.cache.ttl});
 		}
 	}
 };
@@ -38,8 +44,15 @@ const HttpClient& NWSClient::http_client() const {
 }
 
 Result<HttpResponse> NWSClient::do_get(std::string_view path) {
-	(void)impl_->rate_limiter.acquire();
-	return with_retry([&]() { return impl_->http.get(path); }, impl_->retry_policy);
+	return with_retry(
+		[&]() -> Result<HttpResponse> {
+			if (!impl_->rate_limiter.acquire()) {
+				return std::unexpected(
+					Error::rate_limited("Timed out waiting for an NWS request token"));
+			}
+			return impl_->http.get(path);
+		},
+		impl_->retry_policy);
 }
 
 namespace {
@@ -47,21 +60,36 @@ namespace {
 void append_param(std::string& query, bool& has_params, const std::string& key,
 				  const std::string& value) {
 	query += has_params ? "&" : "?";
-	query += key + "=" + value;
+	query += key + "=" + detail::encode_query_value(value);
 	has_params = true;
 }
 
 void append_vector_param(std::string& query, bool& has_params, const std::string& key,
 						 const std::vector<std::string>& values) {
-	for (const std::string& v : values) {
-		append_param(query, has_params, key, v);
+	if (values.empty()) {
+		return;
 	}
+	query += has_params ? "&" : "?";
+	query += key + "=";
+	bool first = true;
+	for (const std::string& value : values) {
+		if (!first) {
+			query += ',';
+		}
+		query += detail::encode_query_value(value);
+		first = false;
+	}
+	has_params = true;
 }
 
 // Extract correlation ID from response headers
 std::string get_correlation_id(const HttpResponse& resp) {
 	for (const auto& [k, v] : resp.headers) {
-		if (k == "X-Correlation-Id" || k == "x-correlation-id") {
+		constexpr std::string_view name = "x-correlation-id";
+		if (k.size() == name.size() &&
+			std::equal(k.begin(), k.end(), name.begin(), [](char a, char b) {
+				return (a >= 'A' && a <= 'Z' ? a + ('a' - 'A') : a) == b;
+			})) {
 			return v;
 		}
 	}
@@ -88,14 +116,17 @@ Result<std::string> body_or_error(Result<HttpResponse>&& http_result) {
 // ===== Points API =====
 
 Result<PointResponse> NWSClient::get_point(double latitude, double longitude) {
+	if (!std::isfinite(latitude) || !std::isfinite(longitude) || latitude < -90 || latitude > 90 ||
+		longitude < -180 || longitude > 180) {
+		return std::unexpected(Error::invalid_request(
+			"Coordinates must be finite and within latitude/longitude bounds"));
+	}
 	// Check cache first
 	if (impl_->points_cache) {
 		CoordinateKey key{latitude, longitude};
-		std::optional<PointProperties> cached = impl_->points_cache->get(key);
+		std::optional<PointResponse> cached = impl_->points_cache->get(key);
 		if (cached) {
-			PointResponse resp;
-			resp.properties = std::move(*cached);
-			return resp;
+			return std::move(*cached);
 		}
 	}
 
@@ -112,7 +143,7 @@ Result<PointResponse> NWSClient::get_point(double latitude, double longitude) {
 
 	// Cache the result
 	if (impl_->points_cache) {
-		impl_->points_cache->put(CoordinateKey{latitude, longitude}, response.properties);
+		impl_->points_cache->put(CoordinateKey{latitude, longitude}, response);
 	}
 
 	return response;
@@ -122,8 +153,8 @@ Result<PointResponse> NWSClient::get_point(double latitude, double longitude) {
 
 Result<ForecastResponse> NWSClient::get_forecast(const std::string& wfo, std::int32_t x,
 												 std::int32_t y, std::optional<UnitSystem> units) {
-	std::string path =
-		"/gridpoints/" + wfo + "/" + std::to_string(x) + "," + std::to_string(y) + "/forecast";
+	std::string path = "/gridpoints/" + detail::encode_query_value(wfo) + "/" + std::to_string(x) +
+					   "," + std::to_string(y) + "/forecast";
 	if (units) {
 		path += (*units == UnitSystem::SI) ? "?units=si" : "?units=us";
 	}
@@ -143,8 +174,8 @@ Result<ForecastResponse> NWSClient::get_forecast(const std::string& wfo, std::in
 Result<ForecastResponse> NWSClient::get_forecast_hourly(const std::string& wfo, std::int32_t x,
 														std::int32_t y,
 														std::optional<UnitSystem> units) {
-	std::string path = "/gridpoints/" + wfo + "/" + std::to_string(x) + "," + std::to_string(y) +
-					   "/forecast/hourly";
+	std::string path = "/gridpoints/" + detail::encode_query_value(wfo) + "/" + std::to_string(x) +
+					   "," + std::to_string(y) + "/forecast/hourly";
 	if (units) {
 		path += (*units == UnitSystem::SI) ? "?units=si" : "?units=us";
 	}
@@ -163,8 +194,8 @@ Result<ForecastResponse> NWSClient::get_forecast_hourly(const std::string& wfo, 
 
 Result<StationCollectionResponse>
 NWSClient::get_gridpoint_stations(const std::string& wfo, std::int32_t x, std::int32_t y) {
-	std::string path =
-		"/gridpoints/" + wfo + "/" + std::to_string(x) + "," + std::to_string(y) + "/stations";
+	std::string path = "/gridpoints/" + detail::encode_query_value(wfo) + "/" + std::to_string(x) +
+					   "," + std::to_string(y) + "/stations";
 
 	Result<std::string> body = body_or_error(do_get(path));
 	if (!body) {
@@ -181,7 +212,8 @@ NWSClient::get_gridpoint_stations(const std::string& wfo, std::int32_t x, std::i
 // ===== Stations API =====
 
 Result<StationResponse> NWSClient::get_station(const std::string& station_id) {
-	Result<std::string> body = body_or_error(do_get("/stations/" + station_id));
+	Result<std::string> body =
+		body_or_error(do_get("/stations/" + detail::encode_query_value(station_id)));
 	if (!body) {
 		return std::unexpected(body.error());
 	}
@@ -215,7 +247,7 @@ std::string NWSClient::build_observations_query(const GetObservationsParams& par
 
 Result<ObservationCollectionResponse>
 NWSClient::get_observations(const std::string& station_id, const GetObservationsParams& params) {
-	std::string path = "/stations/" + station_id + "/observations";
+	std::string path = "/stations/" + detail::encode_query_value(station_id) + "/observations";
 	path += build_observations_query(params);
 
 	Result<std::string> body = body_or_error(do_get(path));
@@ -231,8 +263,8 @@ NWSClient::get_observations(const std::string& station_id, const GetObservations
 }
 
 Result<ObservationResponse> NWSClient::get_latest_observation(const std::string& station_id) {
-	Result<std::string> body =
-		body_or_error(do_get("/stations/" + station_id + "/observations/latest"));
+	Result<std::string> body = body_or_error(
+		do_get("/stations/" + detail::encode_query_value(station_id) + "/observations/latest"));
 	if (!body) {
 		return std::unexpected(body.error());
 	}
@@ -336,7 +368,8 @@ Result<AlertActiveCount> NWSClient::get_active_alert_count() {
 }
 
 Result<AlertCollectionResponse> NWSClient::get_active_alerts_by_area(const std::string& area) {
-	Result<std::string> body = body_or_error(do_get("/alerts/active/area/" + area));
+	Result<std::string> body =
+		body_or_error(do_get("/alerts/active/area/" + detail::encode_query_value(area)));
 	if (!body) {
 		return std::unexpected(body.error());
 	}
@@ -349,7 +382,8 @@ Result<AlertCollectionResponse> NWSClient::get_active_alerts_by_area(const std::
 }
 
 Result<AlertCollectionResponse> NWSClient::get_active_alerts_by_zone(const std::string& zone_id) {
-	Result<std::string> body = body_or_error(do_get("/alerts/active/zone/" + zone_id));
+	Result<std::string> body =
+		body_or_error(do_get("/alerts/active/zone/" + detail::encode_query_value(zone_id)));
 	if (!body) {
 		return std::unexpected(body.error());
 	}
@@ -362,7 +396,7 @@ Result<AlertCollectionResponse> NWSClient::get_active_alerts_by_zone(const std::
 }
 
 Result<AlertFeature> NWSClient::get_alert(const std::string& id) {
-	Result<std::string> body = body_or_error(do_get("/alerts/" + id));
+	Result<std::string> body = body_or_error(do_get("/alerts/" + detail::encode_query_value(id)));
 	if (!body) {
 		return std::unexpected(body.error());
 	}
@@ -382,7 +416,7 @@ Result<std::vector<std::string>> NWSClient::get_alert_types() {
 	// Small one-off shape: {"eventTypes": [...]}. Use glz::generic
 	// directly here instead of carving out yet another deserialize_*.
 	glz::generic root{};
-	glz::error_ctx ec = glz::read_json(root, *body);
+	glz::error_ctx ec = glz::read<detail::kJsonReadOptions>(root, *body);
 	if (ec) {
 		return std::unexpected(Error::parse(glz::format_error(ec, *body)));
 	}
@@ -409,7 +443,8 @@ Result<std::vector<std::string>> NWSClient::get_alert_types() {
 
 Result<GridpointResponse> NWSClient::get_gridpoint(const std::string& wfo, std::int32_t x,
 												   std::int32_t y) {
-	std::string path = "/gridpoints/" + wfo + "/" + std::to_string(x) + "," + std::to_string(y);
+	std::string path = "/gridpoints/" + detail::encode_query_value(wfo) + "/" + std::to_string(x) +
+					   "," + std::to_string(y);
 
 	Result<std::string> body = body_or_error(do_get(path));
 	if (!body) {
@@ -426,7 +461,8 @@ Result<GridpointResponse> NWSClient::get_gridpoint(const std::string& wfo, std::
 // ===== Zones API =====
 
 Result<ZoneFeature> NWSClient::get_zone(const std::string& type, const std::string& zone_id) {
-	Result<std::string> body = body_or_error(do_get("/zones/" + type + "/" + zone_id));
+	Result<std::string> body = body_or_error(do_get("/zones/" + detail::encode_query_value(type) +
+													"/" + detail::encode_query_value(zone_id)));
 	if (!body) {
 		return std::unexpected(body.error());
 	}
@@ -441,7 +477,8 @@ Result<ZoneFeature> NWSClient::get_zone(const std::string& type, const std::stri
 Result<ZoneForecastProperties> NWSClient::get_zone_forecast(const std::string& type,
 															const std::string& zone_id) {
 	Result<std::string> body =
-		body_or_error(do_get("/zones/" + type + "/" + zone_id + "/forecast"));
+		body_or_error(do_get("/zones/" + detail::encode_query_value(type) + "/" +
+							 detail::encode_query_value(zone_id) + "/forecast"));
 	if (!body) {
 		return std::unexpected(body.error());
 	}
@@ -508,8 +545,9 @@ Result<ObservationResponse> NWSClient::get_current_weather(double latitude, doub
 
 Result<ProductProperties> NWSClient::get_latest_product(const std::string& type_id,
 														const std::string& location_id) {
-	Result<std::string> body = body_or_error(
-		do_get("/products/types/" + type_id + "/locations/" + location_id + "/latest"));
+	Result<std::string> body =
+		body_or_error(do_get("/products/types/" + detail::encode_query_value(type_id) +
+							 "/locations/" + detail::encode_query_value(location_id) + "/latest"));
 	if (!body) {
 		return std::unexpected(body.error());
 	}
@@ -522,7 +560,8 @@ Result<ProductProperties> NWSClient::get_latest_product(const std::string& type_
 }
 
 Result<ProductProperties> NWSClient::get_product(const std::string& product_id) {
-	Result<std::string> body = body_or_error(do_get("/products/" + product_id));
+	Result<std::string> body =
+		body_or_error(do_get("/products/" + detail::encode_query_value(product_id)));
 	if (!body) {
 		return std::unexpected(body.error());
 	}

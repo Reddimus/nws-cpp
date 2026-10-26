@@ -3,6 +3,7 @@
 #include "nws/error.hpp"
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -13,8 +14,7 @@
 namespace nws {
 
 /// HTTP response
-/// Uses contiguous vector storage for headers instead of unordered_map
-/// for better cache locality (typically <10 headers in a response).
+/// Headers retain their received order.
 struct HttpResponse {
 	std::int16_t status_code; // HTTP status codes fit in int16 (100-599)
 	std::string body;
@@ -28,6 +28,8 @@ struct ClientConfig {
 	std::string accept{"application/geo+json"};
 	std::chrono::seconds timeout{30};
 	bool verify_ssl{true};
+	/// Maximum decompressed response body; 0 disables the limit.
+	std::size_t max_response_bytes{64 * 1024 * 1024};
 };
 
 /// HTTP client for NWS API

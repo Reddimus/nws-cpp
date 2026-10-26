@@ -4,6 +4,7 @@
 #include <expected>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace nws {
 
@@ -46,13 +47,13 @@ enum class ErrorCode {
 }
 
 /// Error information returned by SDK operations.
-/// Extends kalshi-cpp's Error with RFC 7807 Problem Details fields.
+/// Includes RFC 7807 Problem Details fields.
 struct Error {
-	ErrorCode code;
-	std::string message;
+	ErrorCode code{ErrorCode::Unknown};
+	std::string message{};
 	int http_status{0};
-	std::string correlation_id; // NWS X-Correlation-Id header
-	std::string detail;			// RFC 7807 detail field
+	std::string correlation_id{}; // NWS X-Correlation-Id header
+	std::string detail{};		  // RFC 7807 detail field
 
 	[[nodiscard]] constexpr bool is_ok() const noexcept { return code == ErrorCode::Ok; }
 

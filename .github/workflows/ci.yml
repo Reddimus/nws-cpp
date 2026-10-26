@@ -16,7 +16,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential cmake pkg-config clang-format \
+            build-essential pkg-config clang-format \
             libcurl4-openssl-dev
 
       - name: Build
@@ -24,6 +24,9 @@ jobs:
 
       - name: Test
         run: make test
+
+      - name: Consumer builds
+        run: make consumers
 
       - name: Lint
         run: make lint
@@ -43,6 +46,9 @@ jobs:
 
       - name: Test
         run: make test
+
+      - name: Consumer builds
+        run: make consumers
 
       - name: Lint
         run: make lint

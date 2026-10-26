@@ -103,7 +103,7 @@ struct Measurement {
 /// QuantitativeValue from NWS API responses
 struct QuantitativeValue {
 	std::optional<double> value;
-	std::string unit_code; // raw string e.g. "wmoUnit:degC"
+	std::string unit_code; // Original wire unit; converted_to changes unit and values.
 	Unit unit{Unit::Unknown};
 	std::optional<double> max_value;
 	std::optional<double> min_value;
@@ -113,7 +113,7 @@ struct QuantitativeValue {
 
 	[[nodiscard]] Measurement as_measurement() const { return {value, unit}; }
 
-	/// Get value converted to target unit
+	/// Convert values and bounds; unsupported conversions yield nullopt.
 	[[nodiscard]] QuantitativeValue converted_to(Unit target) const;
 };
 

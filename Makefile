@@ -1,13 +1,14 @@
 # NWS C++ SDK - Root Makefile
 # Wraps CMake for convenient day-to-day workflow
 
-BUILD_DIR := build
+BUILD_DIR ?= build
+BUILD_TYPE ?= Release
+CMAKE_ARGS ?=
 CPP_AUTO_AUDIT := python3 tools/cpp_auto_audit.py
 CMAKE := cmake
 NPROC := $(shell nproc 2>/dev/null || echo 4)
-BENCH_ITERATIONS := 254
 
-.PHONY: all build debug test lint clean configure help bench format pre-commit install-hooks coverage \
+.PHONY: all build debug test lint clean configure help bench format pre-commit install-hooks coverage consumers \
 	run-basic_usage run-get_forecast run-get_observations run-get_alerts run-weather_monitor
 
 # Default target
@@ -16,20 +17,19 @@ all: build
 # Configure CMake (if needed)
 configure:
 	@mkdir -p $(BUILD_DIR)
-	@cd $(BUILD_DIR) && $(CMAKE) .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+	@cd $(BUILD_DIR) && $(CMAKE) .. -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(CMAKE_ARGS)
 
-# Configure debug build
+# Configure a separate Debug build.
 configure-debug:
-	@mkdir -p $(BUILD_DIR)
-	@cd $(BUILD_DIR) && $(CMAKE) .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+	@$(MAKE) configure BUILD_DIR=build-debug BUILD_TYPE=Debug
 
 # Build all targets
 build: configure
 	@$(CMAKE) --build $(BUILD_DIR) -j$(NPROC)
 
 # Debug build
-debug: configure-debug
-	@$(CMAKE) --build $(BUILD_DIR) -j$(NPROC)
+debug:
+	@$(MAKE) build BUILD_DIR=build-debug BUILD_TYPE=Debug
 
 # Run tests
 test: build
@@ -47,6 +47,7 @@ lint:
 		exit 1; \
 	fi
 	$(CPP_AUTO_AUDIT)
+	python3 tools/test_install_hooks.py
 
 
 # Format code in place
@@ -76,17 +77,18 @@ coverage:
 # PR" loop. Idempotent — `format` re-running is a no-op.
 pre-commit: format lint
 
-# install-hooks: drop a .git/hooks/pre-commit shim that runs `make pre-commit`
-# on every `git commit`. One-shot operator setup; idempotent.
+# Installs a lint-only hook; preserves custom hooks and works in worktrees.
 install-hooks:
-	@mkdir -p .git/hooks
-	@if [ -f .git/hooks/pre-commit ] && grep -q 'make pre-commit' .git/hooks/pre-commit 2>/dev/null; then \
-		echo "pre-commit hook already installed"; \
-	else \
-		printf '#!/bin/sh\nexec make pre-commit\n' > .git/hooks/pre-commit; \
-		chmod +x .git/hooks/pre-commit; \
-		echo "Installed .git/hooks/pre-commit -> make pre-commit"; \
-	fi
+	@hook="$$(git rev-parse --git-path hooks)/pre-commit"; \
+	if [ -f "$$hook" ]; then \
+        case "$$(cat "$$hook")" in \
+            "$$(printf '#!/bin/sh\nexec make lint')"|"$$(printf '#!/bin/sh\nexec make pre-commit')") ;; \
+            *) echo "$$hook already exists; not replacing it"; exit 1 ;; \
+        esac; \
+    fi; \
+	mkdir -p "$$(dirname "$$hook")" && printf '#!/bin/sh\nexec make lint\n' > "$$hook" && \
+	chmod +x "$$hook" && echo "Installed $$hook (runs make lint)"
+
 
 # Clean build artifacts
 clean:
@@ -95,7 +97,10 @@ clean:
 
 # Run benchmark
 bench: build
-	@./tools/bench.sh $(BENCH_ITERATIONS)
+	@BUILD_DIR="$(BUILD_DIR)" ./tools/bench.sh
+
+consumers:
+	@./tools/test_consumers.sh
 
 # Run examples
 run-basic_usage: build
@@ -121,7 +126,7 @@ help:
 	@echo "  make build           - Configure and build the SDK (Release)"
 	@echo "  make debug           - Configure and build the SDK (Debug)"
 	@echo "  make test            - Run tests"
-	@echo "  make bench           - Run benchmark ($(BENCH_ITERATIONS) iterations)"
+	@echo "  make bench           - Run the offline parsing benchmark"
 	@echo "  make lint            - Check code formatting"
 	@echo "  make format          - Format code in place"
 	@echo "  make coverage        - Generate code coverage report (requires lcov)"
@@ -136,4 +141,3 @@ help:
 	@echo "  make run-weather_monitor - Run weather monitor example"
 	@echo ""
 	@echo "Variables:"
-	@echo "  BENCH_ITERATIONS=N  - Override benchmark iterations (default: 254)"

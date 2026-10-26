@@ -207,7 +207,10 @@ void populate_string_int_map(const glz::generic& parent, const char* key,
 	}
 	for (const auto& [k, v] : obj->get_object()) {
 		if (v.is_number()) {
-			out[k] = static_cast<std::int32_t>(v.get<double>());
+			const double number = v.get<double>();
+			if (number >= -2147483648.0 && number <= 2147483647.0) {
+				out[k] = static_cast<std::int32_t>(number);
+			}
 		}
 	}
 }
@@ -219,6 +222,7 @@ Result<void> deserialize_alert_feature(std::string_view body, AlertFeature& out)
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 	populate_alert_feature(*root, out);
 	return {};
 }
@@ -228,6 +232,7 @@ Result<void> deserialize_alert_collection(std::string_view body, AlertCollection
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 
 	std::string type = detail::get_string(*root, "type");
 	out.type = type.empty() ? "FeatureCollection" : std::move(type);
@@ -252,6 +257,7 @@ Result<void> deserialize_alert_active_count(std::string_view body, AlertActiveCo
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 
 	out.total = detail::get_int(*root, "total");
 	out.land = detail::get_int(*root, "land");

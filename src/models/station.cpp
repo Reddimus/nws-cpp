@@ -52,6 +52,7 @@ Result<void> deserialize_station_response(std::string_view body, StationResponse
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 	populate_station_response(*root, out);
 	return {};
 }
@@ -61,6 +62,7 @@ Result<void> deserialize_station_collection(std::string_view body, StationCollec
 	if (!root) {
 		return std::unexpected(root.error());
 	}
+	out = {};
 
 	std::string type = detail::get_string(*root, "type");
 	out.type = type.empty() ? "FeatureCollection" : std::move(type);

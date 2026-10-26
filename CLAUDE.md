@@ -15,9 +15,9 @@ make clean          # Remove build/
 ## Architecture
 
 - **Layered static libraries**: nws_core -> nws_http -> nws_models -> nws_api -> nws (INTERFACE)
-- **C++23**: `std::expected<T, Error>` for all returns, no exceptions
+- **C++23**: `std::expected<T, Error>` for operation errors
 - **Patterns**: Pimpl (HttpClient, NWSClient), non-copyable/movable clients, `[[nodiscard]]`
-- **JSON**: [Glaze](https://github.com/stephenberry/glaze) v7.6.0 via FetchContent (compile-time reflection, ~3.4x parse speedup over nlohmann on the gridpoint-forecast hot path — migrated 2026-05-11). The migration uses a `glz::generic` AST + hand-walk strategy (see `src/models/glaze_detail.hpp`) because the NWS payload mixes JSON-LD keys (`@id`, `@type`), polymorphic GeoJSON geometry variants, and mixed-shape fields (`ForecastPeriod.windSpeed` is string-or-object) that don't map cleanly onto a static `glz::meta`. See `tests/parse_benchmark.cpp` for the regression guard.
+- **JSON**: Glaze 9.0.0 via FetchContent; `glz::generic` handles JSON-LD and mixed-shape fields. Validate the complete input. See `src/models/glaze_detail.hpp` and `tests/parse_benchmark.cpp`.
 - **Tests**: GoogleTest via FetchContent. Fixture files in `tests/fixtures/`.
 
 ## Conventions
@@ -26,7 +26,7 @@ make clean          # Remove build/
 - Namespace: `nws`
 - **No `auto`**: Use explicit types. `auto` is only acceptable for iterators, structured bindings (`auto& [key, val]`), and range-for loops (`const auto& x : container`).
 - Null-safety: all `detail::get_*` helpers in `src/models/glaze_detail.hpp` treat missing / null / type-mismatched JSON values as default-constructed output. Use those instead of inlining `glz::generic` lookups so the per-field error-handling stays uniform.
-- Models declare `deserialize_*(std::string_view, T&)` in headers, implement in `.cpp` files. The previous `from_json(const nlohmann::json&, T&)` overloads have been removed.
+- Models declare `deserialize_*(std::string_view, T&)` in headers, implement in `.cpp` files.
 - Include order: project headers first, then system headers (enforced by clang-format)
 
 ## CI

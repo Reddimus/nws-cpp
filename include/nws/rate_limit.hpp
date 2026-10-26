@@ -18,9 +18,10 @@ class RateLimiter {
 public:
 	/// Configuration for rate limiting
 	struct Config {
-		std::uint16_t max_tokens = 5;					   ///< Maximum tokens (NWS is conservative)
-		std::chrono::milliseconds refill_interval{1000};   // Time to add one token
-		std::uint16_t initial_tokens = 5;				   ///< Starting tokens
+		std::uint16_t max_tokens = 5; ///< Maximum tokens (NWS is conservative)
+		std::chrono::milliseconds refill_interval{
+			1000};						  // One token per interval; non-positive becomes 1000 ms.
+		std::uint16_t initial_tokens = 5; ///< Starting tokens
 		std::optional<std::chrono::milliseconds> max_wait; // Max time to wait
 	};
 
@@ -46,6 +47,9 @@ public:
 	[[nodiscard]] const Config& config() const noexcept;
 
 private:
+	using Clock = std::chrono::steady_clock;
+	[[nodiscard]] bool acquire_until(std::optional<Clock::time_point> deadline);
+	[[nodiscard]] std::optional<Clock::duration> take_or_wait_time() noexcept;
 	void refill() noexcept;
 
 	Config config_;

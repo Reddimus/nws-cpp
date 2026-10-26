@@ -182,6 +182,9 @@ std::optional<double> convert(double value, Unit from, Unit to) noexcept {
 	if (from == Unit::Meter && to == Unit::Mile) {
 		return meters_to_miles(value);
 	}
+	if (from == Unit::Mile && to == Unit::Meter) {
+		return value * 1609.344;
+	}
 	if (from == Unit::Kilometer && to == Unit::Mile) {
 		return km_to_miles(value);
 	}
@@ -223,25 +226,10 @@ Measurement Measurement::to(Unit target) const {
 
 QuantitativeValue QuantitativeValue::converted_to(Unit target) const {
 	QuantitativeValue result = *this;
-	if (value.has_value()) {
-		std::optional<double> converted = convert(*value, unit, target);
-		if (converted.has_value()) {
-			result.value = *converted;
-			result.unit = target;
-		}
-	}
-	if (max_value.has_value()) {
-		std::optional<double> converted = convert(*max_value, unit, target);
-		if (converted.has_value()) {
-			result.max_value = *converted;
-		}
-	}
-	if (min_value.has_value()) {
-		std::optional<double> converted = convert(*min_value, unit, target);
-		if (converted.has_value()) {
-			result.min_value = *converted;
-		}
-	}
+	result.unit = target;
+	result.value = value ? convert(*value, unit, target) : std::nullopt;
+	result.min_value = min_value ? convert(*min_value, unit, target) : std::nullopt;
+	result.max_value = max_value ? convert(*max_value, unit, target) : std::nullopt;
 	return result;
 }
 

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file api.hpp
-/// @brief Complete REST API client for the National Weather Service
+/// @brief Core National Weather Service endpoint wrappers
 
 #include "nws/cache.hpp"
 #include "nws/error.hpp"
@@ -32,6 +32,7 @@ enum class UnitSystem : std::uint8_t { US, SI };
 
 // ===== Request parameter structures =====
 
+/// String-valued multi-select filters also accept comma-separated alternatives.
 struct GetAlertsParams {
 	std::optional<std::vector<std::string>> status;
 	std::optional<std::string> message_type;
@@ -55,6 +56,7 @@ struct GetObservationsParams {
 	std::optional<std::string> cursor;
 };
 
+// Parameter models for requests without high-level wrappers yet.
 struct GetStationsParams {
 	std::optional<std::vector<std::string>> id;
 	std::optional<std::vector<std::string>> state;
@@ -83,10 +85,11 @@ struct GetProductsParams {
 	std::optional<std::int32_t> limit;
 };
 
-/// Complete National Weather Service REST API client
+/// Core National Weather Service REST client
 ///
-/// Provides typed methods for all NWS API endpoints.
-/// Uses HttpClient for HTTP communication with built-in rate limiting and retry.
+/// Wraps the core endpoints listed in README.md.
+/// Uses HttpClient with built-in rate limiting and retry. Not thread-safe;
+/// use one client per thread or guard its calls.
 class NWSClient {
 public:
 	struct Config {

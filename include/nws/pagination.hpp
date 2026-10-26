@@ -1,11 +1,14 @@
 #pragma once
 
+#include "nws/detail/url_encode.hpp"
 #include "nws/error.hpp"
 
 #include <cstdint>
 #include <functional>
+#include <iterator>
 #include <optional>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -43,7 +46,11 @@ public:
 	using FetchFn = std::function<Result<PaginatedResponse<T>>(const PaginationParams&)>;
 
 	explicit PaginatedIterator(FetchFn fetch_fn, PaginationParams initial_params = {})
-		: fetch_fn_(std::move(fetch_fn)), params_(std::move(initial_params)) {}
+		: fetch_fn_(std::move(fetch_fn)), params_(std::move(initial_params)) {
+		if (params_.cursor && !params_.cursor->empty()) {
+			seen_cursors_.insert(params_.cursor->value);
+		}
+	}
 
 	/// Fetch the next page of results
 	[[nodiscard]] Result<std::vector<T>> next() {
@@ -58,7 +65,11 @@ public:
 
 		PaginatedResponse<T>& page = *result;
 		if (page.has_more()) {
-			params_.cursor = page.next_cursor;
+			if (!seen_cursors_.insert(page.next_cursor->value).second) {
+				exhausted_ = true;
+				return std::unexpected(Error::parse("Pagination cursor repeated"));
+			}
+			params_.cursor = std::move(page.next_cursor);
 		} else {
 			exhausted_ = true;
 		}
@@ -84,6 +95,8 @@ public:
 	}
 
 private:
+	// One cursor per page prevents arbitrary continuation cycles.
+	std::unordered_set<std::string> seen_cursors_;
 	FetchFn fetch_fn_;
 	PaginationParams params_;
 	bool exhausted_{false};
@@ -93,7 +106,7 @@ private:
 [[nodiscard]] inline std::string build_paginated_query(const PaginationParams& params) {
 	std::string query;
 	if (params.cursor.has_value() && !params.cursor->empty()) {
-		query += "cursor=" + params.cursor->value;
+		query += "cursor=" + detail::encode_query_value(params.cursor->value);
 	}
 	if (params.limit.has_value()) {
 		if (!query.empty()) {

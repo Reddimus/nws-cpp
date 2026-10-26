@@ -9,6 +9,8 @@
 #include <string_view>
 #include <variant>
 
+#include "json.hpp"
+
 namespace nws::detail {
 
 namespace {
@@ -203,7 +205,7 @@ Geometry parse_geometry(const glz::generic& node) {
 
 Result<glz::generic> parse_root(std::string_view body) {
 	glz::generic root{};
-	glz::error_ctx ec = glz::read_json(root, body);
+	glz::error_ctx ec = glz::read<kJsonReadOptions>(root, body);
 	if (ec) {
 		return std::unexpected(Error::parse(glz::format_error(ec, body)));
 	}
